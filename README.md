@@ -1,807 +1,2958 @@
 
+A machine learning attempt at predicting wine quality ratings using dataset from the University of Massachusetts
 
 
+# Load Modules
 
 
+```python
+import numpy as np
+import pandas as pd
+import seaborn as sns
+from matplotlib import pyplot as plt
+%matplotlib inline
 
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-  <link rel="dns-prefetch" href="https://assets-cdn.github.com">
-  <link rel="dns-prefetch" href="https://avatars0.githubusercontent.com">
-  <link rel="dns-prefetch" href="https://avatars1.githubusercontent.com">
-  <link rel="dns-prefetch" href="https://avatars2.githubusercontent.com">
-  <link rel="dns-prefetch" href="https://avatars3.githubusercontent.com">
-  <link rel="dns-prefetch" href="https://github-cloud.s3.amazonaws.com">
-  <link rel="dns-prefetch" href="https://user-images.githubusercontent.com/">
+from sklearn.model_selection import train_test_split
+from sklearn import preprocessing
+from sklearn.pipeline import make_pipeline
+from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.externals import joblib #for saving model
+```
+
+Just to suppress the warnings sklearn gives:
 
 
+```python
+def warn(*args, **kwargs):
+    pass
+import warnings
+warnings.warn = warn
+```
 
-  <link crossorigin="anonymous" media="all" integrity="sha512-pCRDtdb3GlUU48h+oRJVA8f0GddrLnU97wB7mHQ7q6c40vMbMMZsFdk0IMhkUFRqw1M/y4EkWxtaKwfeFezOkQ==" rel="stylesheet" href="https://assets-cdn.github.com/assets/frameworks-73f533b7cc08a9d040e601cfd38fa585.css" />
-  <link crossorigin="anonymous" media="all" integrity="sha512-Qw5J00nllh7i6YhkeuTbchGG4tSxaGEUjNVqvg1o1Z7HAYHvC+FtL9ecXTiaL9EuIuss/mGi02SreDbZ2nyrBA==" rel="stylesheet" href="https://assets-cdn.github.com/assets/github-ddcc6a619691a9c698678dd609acaed2.css" />
-  
-  
-  
-  
+Also, for clarity, make numpy print arrays to 2 decimal places
 
-  <meta name="viewport" content="width=device-width">
-  
-  <title>Wine-Quality-Regression/README.md at master · jimmyqiji/Wine-Quality-Regression</title>
-    <meta name="description" content="GitHub is where people build software. More than 28 million people use GitHub to discover, fork, and contribute to over 85 million projects.">
-    <link rel="search" type="application/opensearchdescription+xml" href="/opensearch.xml" title="GitHub">
-  <link rel="fluid-icon" href="https://github.com/fluidicon.png" title="GitHub">
-  <meta property="fb:app_id" content="1401488693436528">
 
+```python
+np.set_printoptions(formatter={'float': lambda x: "{0:0.2f}".format(x)})
+```
+
+# Load Dataset
+We load the dataset into variable data:
+
+
+```python
+# dataset_url = 'http://mlr.cs.umass.edu/ml/machine-learning-databases/wine-quality/winequality-red.csv'
+dataset_url = './wine-quality-red.csv'
+data = pd.read_csv(dataset_url, sep = ";")
+```
+
+# Data Preview
+We'll first try to get familiar with how the dataset is structured
+
+
+```python
+print("Data dimensions: "+ str(data.shape) +"\n")
+
+print("The first entries of the dataset: ")
+data.head()
+
+print("\nQuantitative properties of each feature: ")
+data.describe()
+```
+
+    Data dimensions: (1599, 12)
     
-    <meta property="og:image" content="https://avatars1.githubusercontent.com/u/32436316?s=400&amp;v=4" /><meta property="og:site_name" content="GitHub" /><meta property="og:type" content="object" /><meta property="og:title" content="jimmyqiji/Wine-Quality-Regression" /><meta property="og:url" content="https://github.com/jimmyqiji/Wine-Quality-Regression" /><meta property="og:description" content="Contribute to Wine-Quality-Regression development by creating an account on GitHub." />
-
-  <link rel="assets" href="https://assets-cdn.github.com/">
-  <link rel="web-socket" href="wss://live.github.com/_sockets/VjI6MjkzMTY4NTA5OmQ5MDIwOTAwZmU1MmY3OTEyYWRiMWEwODI2NGMzYmNjZDljZDhiMDBhMDI2MDkzYWU2NTE0YjFiYjVhNjQ4YTA=--2ea671e5dbeabc5bcf43828f3c689dc77a16a04e">
-  <meta name="pjax-timeout" content="1000">
-  <link rel="sudo-modal" href="/sessions/sudo_modal">
-  <meta name="request-id" content="2412:1649:3988E3F:74397F6:5B3E62C1" data-pjax-transient>
-
-
-  
-
-  <meta name="selected-link" value="repo_source" data-pjax-transient>
-
-    <meta name="google-site-verification" content="KT5gs8h0wvaagLKAVWq8bbeNwnZZK1r1XQysX3xurLU">
-  <meta name="google-site-verification" content="ZzhVyEFwb7w3e0-uOTltm8Jsck2F5StVihD0exw2fsA">
-  <meta name="google-site-verification" content="GXs5KoUUkNCoaAZn7wPN-t01Pywp9M3sEjnt_3_ZWPc">
-    <meta name="google-analytics" content="UA-3769691-2">
-
-<meta name="octolytics-host" content="collector.githubapp.com" /><meta name="octolytics-app-id" content="github" /><meta name="octolytics-event-url" content="https://collector.githubapp.com/github-external/browser_event" /><meta name="octolytics-dimension-request_id" content="2412:1649:3988E3F:74397F6:5B3E62C1" /><meta name="octolytics-dimension-region_edge" content="iad" /><meta name="octolytics-dimension-region_render" content="iad" /><meta name="octolytics-actor-id" content="32436316" /><meta name="octolytics-actor-login" content="jimmyqiji" /><meta name="octolytics-actor-hash" content="6223dfde36fd3bdd11f9915e5dee6ee5f973d8448b84f6c88d5be79755bd548b" />
-<meta name="analytics-location" content="/&lt;user-name&gt;/&lt;repo-name&gt;/blob/show" data-pjax-transient="true" />
+    The first entries of the dataset: 
 
 
 
 
-<meta class="js-ga-set" name="dimension1" content="Logged In">
 
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
 
-  
-
-      <meta name="hostname" content="github.com">
-    <meta name="user-login" content="jimmyqiji">
-
-      <meta name="expected-hostname" content="github.com">
-    <meta name="js-proxy-site-detection-payload" content="NDJiMmJlODNiZWFmOWM3ZjYzM2Y5NWU3YzM4MTNiY2IyMWU5MDZkZWEyYTFmMTcxZWFmNDY0Y2NjNjdlM2FmY3x7InJlbW90ZV9hZGRyZXNzIjoiMTI5Ljk3LjEyNC4zMyIsInJlcXVlc3RfaWQiOiIyNDEyOjE2NDk6Mzk4OEUzRjo3NDM5N0Y2OjVCM0U2MkMxIiwidGltZXN0YW1wIjoxNTMwODE1MTY5LCJob3N0IjoiZ2l0aHViLmNvbSJ9">
-
-    <meta name="enabled-features" content="UNIVERSE_BANNER,FREE_TRIALS,MARKETPLACE_INSIGHTS,MARKETPLACE_SEARCH,MARKETPLACE_INSIGHTS_CONVERSION_PERCENTAGES">
-
-  <meta name="html-safe-nonce" content="cd2146775e7bcefd5792ba5514655e710b874e03">
-
-  <meta http-equiv="x-pjax-version" content="57f65c46e16f0a0c374d5250cdea0e1e">
-  
-
-      <link href="https://github.com/jimmyqiji/Wine-Quality-Regression/commits/master.atom" rel="alternate" title="Recent Commits to Wine-Quality-Regression:master" type="application/atom+xml">
-
-  <meta name="description" content="Contribute to Wine-Quality-Regression development by creating an account on GitHub.">
-  <meta name="go-import" content="github.com/jimmyqiji/Wine-Quality-Regression git https://github.com/jimmyqiji/Wine-Quality-Regression.git">
-
-  <meta name="octolytics-dimension-user_id" content="32436316" /><meta name="octolytics-dimension-user_login" content="jimmyqiji" /><meta name="octolytics-dimension-repository_id" content="139885907" /><meta name="octolytics-dimension-repository_nwo" content="jimmyqiji/Wine-Quality-Regression" /><meta name="octolytics-dimension-repository_public" content="true" /><meta name="octolytics-dimension-repository_is_fork" content="false" /><meta name="octolytics-dimension-repository_network_root_id" content="139885907" /><meta name="octolytics-dimension-repository_network_root_nwo" content="jimmyqiji/Wine-Quality-Regression" /><meta name="octolytics-dimension-repository_explore_github_marketplace_ci_cta_shown" content="true" />
-
-
-    <link rel="canonical" href="https://github.com/jimmyqiji/Wine-Quality-Regression/blob/master/README.md" data-pjax-transient>
-
-
-  <meta name="browser-stats-url" content="https://api.github.com/_private/browser/stats">
-
-  <meta name="browser-errors-url" content="https://api.github.com/_private/browser/errors">
-
-  <link rel="mask-icon" href="https://assets-cdn.github.com/pinned-octocat.svg" color="#000000">
-  <link rel="icon" type="image/x-icon" class="js-site-favicon" href="https://assets-cdn.github.com/favicon.ico">
-
-<meta name="theme-color" content="#1e2327">
-
-
-  <meta name="u2f-support" content="true">
-
-<link rel="manifest" href="/manifest.json" crossOrigin="use-credentials">
-
-  </head>
-
-  <body class="logged-in env-production page-blob">
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
     
-
-  <div class="position-relative js-header-wrapper ">
-    <a href="#start-of-content" tabindex="1" class="p-3 bg-blue text-white show-on-focus js-skip-to-content">Skip to content</a>
-    <div id="js-pjax-loader-bar" class="pjax-loader-bar"><div class="progress"></div></div>
-
-    
-    
-    
-
-
-
-        
-<header class="Header  f5" role="banner">
-  <div class="d-flex flex-justify-between px-3 container-lg">
-    <div class="d-flex flex-justify-between ">
-      <div class="">
-        <a class="header-logo-invertocat" href="https://github.com/" data-hotkey="g d" aria-label="Homepage" data-ga-click="Header, go to dashboard, icon:logo">
-  <svg height="32" class="octicon octicon-mark-github" viewBox="0 0 16 16" version="1.1" width="32" aria-hidden="true"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
-</a>
-
-      </div>
-
-    </div>
-
-    <div class="HeaderMenu d-flex flex-justify-between flex-auto">
-      <div class="d-flex">
-            <div class="">
-              <div class="header-search scoped-search site-scoped-search js-site-search position-relative js-jump-to"
-  role="search combobox"
-  aria-owns="jump-to-results"
-  aria-label="Search or jump to"
-  aria-haspopup="listbox"
-  aria-expanded="true"
->
-  <div class="position-relative">
-    <!-- '"` --><!-- </textarea></xmp> --></option></form><form class="js-site-search-form" data-scope-type="Repository" data-scope-id="139885907" data-scoped-search-url="/jimmyqiji/Wine-Quality-Regression/search" data-unscoped-search-url="/search" action="/jimmyqiji/Wine-Quality-Regression/search" accept-charset="UTF-8" method="get"><input name="utf8" type="hidden" value="&#x2713;" />
-      <label class="form-control header-search-wrapper header-search-wrapper-jump-to position-relative d-flex flex-justify-between flex-items-center js-chromeless-input-container">
-        <input type="text"
-          class="form-control header-search-input jump-to-field js-jump-to-field js-site-search-focus js-site-search-field is-clearable"
-          data-hotkey="s,/"
-          name="q"
-          value=""
-          placeholder="Search or jump to…"
-          data-unscoped-placeholder="Search or jump to…"
-          data-scoped-placeholder="Search or jump to…"
-          autocapitalize="off"
-          aria-autocomplete="list"
-          aria-controls="jump-to-results"
-          data-jump-to-suggestions-path="/_graphql/GetSuggestedNavigationDestinations#csrf-token=mdQ+YbXGExuzcPF4GZreaIHrlF0PEzbtKqAJnlPlWBoInbwfMni2EJ9ArXwV5Xg0hhT0HSWX1g3Z33cQmpe1Lw=="
-          spellcheck="false"
-          autocomplete="off"
-          >
-          <input type="hidden" class="js-site-search-type-field" name="type" >
-            <img src="https://assets-cdn.github.com/images/search-shortcut-hint.svg" alt="" class="mr-2 header-search-key-slash">
-
-            <div class="Box position-absolute overflow-hidden d-none jump-to-suggestions js-jump-to-suggestions-container">
-              <ul class="d-none js-jump-to-suggestions-template-container">
-                <li class="d-flex flex-justify-start flex-items-center p-0 f5 navigation-item js-navigation-item">
-                  <a tabindex="-1" class="no-underline d-flex flex-auto flex-items-center p-2 jump-to-suggestions-path js-jump-to-suggestion-path js-navigation-open" href="">
-                    <div class="jump-to-octicon js-jump-to-octicon mr-2 text-center d-none"></div>
-                    <img class="avatar mr-2 flex-shrink-0 js-jump-to-suggestion-avatar" alt="" aria-label="Team" src="" width="28" height="28">
-
-                    <div class="jump-to-suggestion-name js-jump-to-suggestion-name flex-auto overflow-hidden no-wrap css-truncate css-truncate-target">
-                    </div>
-
-                    <div class="border rounded-1 flex-shrink-0 bg-gray px-1 text-gray-light ml-1 f6 d-none js-jump-to-badge-search">
-                      <span class="js-jump-to-badge-search-text-default d-none" aria-label="in this repository">
-                        In this repository
-                      </span>
-                      <span class="js-jump-to-badge-search-text-global d-none" aria-label="in all of GitHub">
-                        All GitHub
-                      </span>
-                      <span aria-hidden="true" class="d-inline-block ml-1 v-align-middle">↵</span>
-                    </div>
-
-                    <div aria-hidden="true" class="border rounded-1 flex-shrink-0 bg-gray px-1 text-gray-light ml-1 f6 d-none d-on-nav-focus js-jump-to-badge-jump">
-                      Jump to
-                      <span class="d-inline-block ml-1 v-align-middle">↵</span>
-                    </div>
-                  </a>
-                </li>
-                <svg height="16" width="16" class="octicon octicon-repo flex-shrink-0 js-jump-to-repo-octicon-template" title="Repository" aria-label="Repository" viewBox="0 0 12 16" version="1.1" role="img"><path fill-rule="evenodd" d="M4 9H3V8h1v1zm0-3H3v1h1V6zm0-2H3v1h1V4zm0-2H3v1h1V2zm8-1v12c0 .55-.45 1-1 1H6v2l-1.5-1.5L3 16v-2H1c-.55 0-1-.45-1-1V1c0-.55.45-1 1-1h10c.55 0 1 .45 1 1zm-1 10H1v2h2v-1h3v1h5v-2zm0-10H2v9h9V1z"/></svg>
-                <svg height="16" width="16" class="octicon octicon-project flex-shrink-0 js-jump-to-project-octicon-template" title="Project" aria-label="Project" viewBox="0 0 15 16" version="1.1" role="img"><path fill-rule="evenodd" d="M10 12h3V2h-3v10zm-4-2h3V2H6v8zm-4 4h3V2H2v12zm-1 1h13V1H1v14zM14 0H1a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1V1a1 1 0 0 0-1-1z"/></svg>
-                <svg height="16" width="16" class="octicon octicon-search flex-shrink-0 js-jump-to-search-octicon-template" title="Search" aria-label="Search" viewBox="0 0 16 16" version="1.1" role="img"><path fill-rule="evenodd" d="M15.7 13.3l-3.81-3.83A5.93 5.93 0 0 0 13 6c0-3.31-2.69-6-6-6S1 2.69 1 6s2.69 6 6 6c1.3 0 2.48-.41 3.47-1.11l3.83 3.81c.19.2.45.3.7.3.25 0 .52-.09.7-.3a.996.996 0 0 0 0-1.41v.01zM7 10.7c-2.59 0-4.7-2.11-4.7-4.7 0-2.59 2.11-4.7 4.7-4.7 2.59 0 4.7 2.11 4.7 4.7 0 2.59-2.11 4.7-4.7 4.7z"/></svg>
-              </ul>
-              <ul class="d-none js-jump-to-no-results-template-container">
-                <li class="d-flex flex-justify-center flex-items-center p-3 f5 d-none">
-                  <span class="text-gray">No suggested jump to results</span>
-                </li>
-              </ul>
-
-              <ul id="jump-to-results" class="js-navigation-container jump-to-suggestions-results-container js-jump-to-suggestions-results-container" >
-                <li class="d-flex flex-justify-center flex-items-center p-0 f5">
-                  <img src="https://assets-cdn.github.com/images/spinners/octocat-spinner-128.gif" alt="Octocat Spinner Icon" class="m-2" width="28">
-                </li>
-              </ul>
-            </div>
-      </label>
-</form>  </div>
-</div>
-
-            </div>
-
-          <ul class="d-flex pl-2 flex-items-center text-bold list-style-none" role="navigation">
-            <li>
-              <a class="js-selected-navigation-item HeaderNavlink px-2" data-hotkey="g p" data-ga-click="Header, click, Nav menu - item:pulls context:user" aria-label="Pull requests you created" data-selected-links="/pulls /pulls/assigned /pulls/mentioned /pulls" href="/pulls">
-                Pull requests
-</a>            </li>
-            <li>
-              <a class="js-selected-navigation-item HeaderNavlink px-2" data-hotkey="g i" data-ga-click="Header, click, Nav menu - item:issues context:user" aria-label="Issues you created" data-selected-links="/issues /issues/assigned /issues/mentioned /issues" href="/issues">
-                Issues
-</a>            </li>
-              <li>
-                <a class="js-selected-navigation-item HeaderNavlink px-2" data-ga-click="Header, click, Nav menu - item:marketplace context:user" data-octo-click="marketplace_click" data-octo-dimensions="location:nav_bar" data-selected-links=" /marketplace" href="/marketplace">
-                   Marketplace
-</a>              </li>
-            <li>
-              <a class="js-selected-navigation-item HeaderNavlink px-2" data-ga-click="Header, click, Nav menu - item:explore" data-selected-links="/explore /trending /trending/developers /integrations /integrations/feature/code /integrations/feature/collaborate /integrations/feature/ship showcases showcases_search showcases_landing /explore" href="/explore">
-                Explore
-</a>            </li>
-          </ul>
-      </div>
-
-      <div class="d-flex">
-        
-<ul class="user-nav d-flex flex-items-center list-style-none" id="user-links">
-  <li class="dropdown">
-    <span class="d-inline-block  px-2">
-      
-    <a aria-label="You have no unread notifications" class="notification-indicator tooltipped tooltipped-s  js-socket-channel js-notification-indicator" data-hotkey="g n" data-ga-click="Header, go to notifications, icon:read" data-channel="notification-changed:32436316" href="/notifications">
-        <span class="mail-status "></span>
-        <svg class="octicon octicon-bell" viewBox="0 0 14 16" version="1.1" width="14" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M13.99 11.991v1H0v-1l.73-.58c.769-.769.809-2.547 1.189-4.416.77-3.767 4.077-4.996 4.077-4.996 0-.55.45-1 .999-1 .55 0 1 .45 1 1 0 0 3.387 1.229 4.156 4.996.38 1.879.42 3.657 1.19 4.417l.659.58h-.01zM6.995 15.99c1.11 0 1.999-.89 1.999-1.999H4.996c0 1.11.89 1.999 1.999 1.999z"/></svg>
-</a>
-    </span>
-  </li>
-
-  <li class="dropdown">
-    <details class="details-overlay details-reset js-dropdown-details d-flex px-2 flex-items-center">
-      <summary class="HeaderNavlink"
-         aria-label="Create new…"
-         data-ga-click="Header, create new, icon:add">
-        <svg class="octicon octicon-plus float-left mr-1 mt-1" viewBox="0 0 12 16" version="1.1" width="12" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M12 9H7v5H5V9H0V7h5V2h2v5h5v2z"/></svg>
-        <span class="dropdown-caret mt-1"></span>
-      </summary>
-
-      <ul class="dropdown-menu dropdown-menu-sw">
-        
-<a class="dropdown-item" href="/new" data-ga-click="Header, create new repository">
-  New repository
-</a>
-
-  <a class="dropdown-item" href="/new/import" data-ga-click="Header, import a repository">
-    Import repository
-  </a>
-
-<a class="dropdown-item" href="https://gist.github.com/" data-ga-click="Header, create new gist">
-  New gist
-</a>
-
-  <a class="dropdown-item" href="/organizations/new" data-ga-click="Header, create new organization">
-    New organization
-  </a>
-
-
-
-  <div class="dropdown-divider"></div>
-  <div class="dropdown-header">
-    <span title="jimmyqiji/Wine-Quality-Regression">This repository</span>
-  </div>
-    <a class="dropdown-item" href="/jimmyqiji/Wine-Quality-Regression/issues/new" data-ga-click="Header, create new issue">
-      New issue
-    </a>
-
-      </ul>
-    </details>
-  </li>
-
-  <li class="dropdown">
-
-    <details class="details-overlay details-reset js-dropdown-details d-flex pl-2 flex-items-center">
-      <summary class="HeaderNavlink name mt-1"
-        aria-label="View profile and more"
-        data-ga-click="Header, show menu, icon:avatar">
-        <img alt="@jimmyqiji" class="avatar float-left mr-1" src="https://avatars0.githubusercontent.com/u/32436316?s=40&amp;v=4" height="20" width="20">
-        <span class="dropdown-caret"></span>
-      </summary>
-
-      <ul class="dropdown-menu dropdown-menu-sw">
-        <li class="dropdown-header header-nav-current-user css-truncate">
-          Signed in as <strong class="css-truncate-target">jimmyqiji</strong>
-        </li>
-
-        <li class="dropdown-divider"></li>
-
-        <li><a class="dropdown-item" href="/jimmyqiji" data-ga-click="Header, go to profile, text:your profile">
-          Your profile
-        </a></li>
-        <li><a class="dropdown-item" href="/jimmyqiji?tab=stars" data-ga-click="Header, go to starred repos, text:your stars">
-          Your stars
-        </a></li>
-          <li><a class="dropdown-item" href="https://gist.github.com/" data-ga-click="Header, your gists, text:your gists">Your gists</a></li>
-
-        <li class="dropdown-divider"></li>
-
-        <li><a class="dropdown-item" href="https://help.github.com" data-ga-click="Header, go to help, text:help">
-          Help
-        </a></li>
-
-        <li><a class="dropdown-item" href="/settings/profile" data-ga-click="Header, go to settings, icon:settings">
-          Settings
-        </a></li>
-
-        <li><!-- '"` --><!-- </textarea></xmp> --></option></form><form class="logout-form" action="/logout" accept-charset="UTF-8" method="post"><input name="utf8" type="hidden" value="&#x2713;" /><input type="hidden" name="authenticity_token" value="WIWJfi8485qnZVbX6R1dA/DY8sx4TBdAQOIbG4u3BDzlBjcDhf6XKzOTdKU4yfsYLbgib3ZcZlCEU8NvkctLnw==" />
-          <button type="submit" class="dropdown-item dropdown-signout" data-ga-click="Header, sign out, icon:logout">
-            Sign out
-          </button>
-        </form></li>
-      </ul>
-    </details>
-  </li>
-</ul>
-
-
-
-        <!-- '"` --><!-- </textarea></xmp> --></option></form><form class="sr-only right-0" action="/logout" accept-charset="UTF-8" method="post"><input name="utf8" type="hidden" value="&#x2713;" /><input type="hidden" name="authenticity_token" value="/C+NGo3NLMBdE2nvs/AekNWP3eXncwn3ENabBb4Z44RBrDNnJwtIccnlS51iJLiLCO8NRuljeOfUZ0NxpGWsJw==" />
-          <button type="submit" class="dropdown-item dropdown-signout" data-ga-click="Header, sign out, icon:logout">
-            Sign out
-          </button>
-</form>      </div>
-    </div>
-  </div>
-</header>
-
-      
-
-  </div>
-
-  <div id="start-of-content" class="show-on-focus"></div>
-
-    <div id="js-flash-container">
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>fixed acidity</th>
+      <th>volatile acidity</th>
+      <th>citric acid</th>
+      <th>residual sugar</th>
+      <th>chlorides</th>
+      <th>free sulfur dioxide</th>
+      <th>total sulfur dioxide</th>
+      <th>density</th>
+      <th>pH</th>
+      <th>sulphates</th>
+      <th>alcohol</th>
+      <th>quality</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>7.4</td>
+      <td>0.70</td>
+      <td>0.00</td>
+      <td>1.9</td>
+      <td>0.076</td>
+      <td>11.0</td>
+      <td>34.0</td>
+      <td>0.9978</td>
+      <td>3.51</td>
+      <td>0.56</td>
+      <td>9.4</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>7.8</td>
+      <td>0.88</td>
+      <td>0.00</td>
+      <td>2.6</td>
+      <td>0.098</td>
+      <td>25.0</td>
+      <td>67.0</td>
+      <td>0.9968</td>
+      <td>3.20</td>
+      <td>0.68</td>
+      <td>9.8</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>7.8</td>
+      <td>0.76</td>
+      <td>0.04</td>
+      <td>2.3</td>
+      <td>0.092</td>
+      <td>15.0</td>
+      <td>54.0</td>
+      <td>0.9970</td>
+      <td>3.26</td>
+      <td>0.65</td>
+      <td>9.8</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>11.2</td>
+      <td>0.28</td>
+      <td>0.56</td>
+      <td>1.9</td>
+      <td>0.075</td>
+      <td>17.0</td>
+      <td>60.0</td>
+      <td>0.9980</td>
+      <td>3.16</td>
+      <td>0.58</td>
+      <td>9.8</td>
+      <td>6</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>7.4</td>
+      <td>0.70</td>
+      <td>0.00</td>
+      <td>1.9</td>
+      <td>0.076</td>
+      <td>11.0</td>
+      <td>34.0</td>
+      <td>0.9978</td>
+      <td>3.51</td>
+      <td>0.56</td>
+      <td>9.4</td>
+      <td>5</td>
+    </tr>
+  </tbody>
+</table>
 </div>
 
 
 
-  <div role="main" class="application-main ">
-        <div itemscope itemtype="http://schema.org/SoftwareSourceCode" class="">
-    <div id="js-repo-pjax-container" data-pjax-container >
-      
+
+    Quantitative properties of each feature: 
 
 
 
 
 
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
 
-
-  <div class="pagehead repohead instapaper_ignore readability-menu experiment-repo-nav  ">
-    <div class="repohead-details-container clearfix container">
-
-      <ul class="pagehead-actions">
-  <li>
-        <!-- '"` --><!-- </textarea></xmp> --></option></form><form data-autosubmit="true" data-remote="true" class="js-social-container" action="/notifications/subscribe" accept-charset="UTF-8" method="post"><input name="utf8" type="hidden" value="&#x2713;" /><input type="hidden" name="authenticity_token" value="itkN94iAejlvBUhOYSYbikuRIZFU3o/iDmuQwrlwjQq1dXDKXpWZoPDAwqTf7+vnIzThYQacYfgeFvtv6+JYyQ==" />      <input type="hidden" name="repository_id" id="repository_id" value="139885907" class="form-control" />
-
-        <div class="select-menu js-menu-container js-select-menu">
-          <a href="/jimmyqiji/Wine-Quality-Regression/subscription"
-            class="btn btn-sm btn-with-count select-menu-button js-menu-target"
-            role="button"
-            aria-haspopup="true"
-            aria-expanded="false"
-            aria-label="Toggle repository notifications menu"
-            data-ga-click="Repository, click Watch settings, action:blob#show">
-            <span class="js-select-button">
-                <svg class="octicon octicon-eye" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M8.06 2C3 2 0 8 0 8s3 6 8.06 6C13 14 16 8 16 8s-3-6-7.94-6zM8 12c-2.2 0-4-1.78-4-4 0-2.2 1.8-4 4-4 2.22 0 4 1.8 4 4 0 2.22-1.78 4-4 4zm2-4c0 1.11-.89 2-2 2-1.11 0-2-.89-2-2 0-1.11.89-2 2-2 1.11 0 2 .89 2 2z"/></svg>
-                Watch
-            </span>
-          </a>
-          <a class="social-count js-social-count"
-            href="/jimmyqiji/Wine-Quality-Regression/watchers"
-            aria-label="0 users are watching this repository">
-            0
-          </a>
-
-        <div class="select-menu-modal-holder">
-          <div class="select-menu-modal subscription-menu-modal js-menu-content">
-            <div class="select-menu-header js-navigation-enable" tabindex="-1">
-              <svg class="octicon octicon-x js-menu-close" role="img" aria-label="Close" viewBox="0 0 12 16" version="1.1" width="12" height="16"><path fill-rule="evenodd" d="M7.48 8l3.75 3.75-1.48 1.48L6 9.48l-3.75 3.75-1.48-1.48L4.52 8 .77 4.25l1.48-1.48L6 6.52l3.75-3.75 1.48 1.48L7.48 8z"/></svg>
-              <span class="select-menu-title">Notifications</span>
-            </div>
-
-              <div class="select-menu-list js-navigation-container" role="menu">
-
-                <div class="select-menu-item js-navigation-item selected" role="menuitem" tabindex="0">
-                  <svg class="octicon octicon-check select-menu-item-icon" viewBox="0 0 12 16" version="1.1" width="12" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M12 5l-8 8-4-4 1.5-1.5L4 10l6.5-6.5L12 5z"/></svg>
-                  <div class="select-menu-item-text">
-                    <input type="radio" name="do" id="do_included" value="included" checked="checked" />
-                    <span class="select-menu-item-heading">Not watching</span>
-                    <span class="description">Be notified when participating or @mentioned.</span>
-                    <span class="js-select-button-text hidden-select-button-text">
-                      <svg class="octicon octicon-eye" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M8.06 2C3 2 0 8 0 8s3 6 8.06 6C13 14 16 8 16 8s-3-6-7.94-6zM8 12c-2.2 0-4-1.78-4-4 0-2.2 1.8-4 4-4 2.22 0 4 1.8 4 4 0 2.22-1.78 4-4 4zm2-4c0 1.11-.89 2-2 2-1.11 0-2-.89-2-2 0-1.11.89-2 2-2 1.11 0 2 .89 2 2z"/></svg>
-                      Watch
-                    </span>
-                  </div>
-                </div>
-
-                <div class="select-menu-item js-navigation-item " role="menuitem" tabindex="0">
-                  <svg class="octicon octicon-check select-menu-item-icon" viewBox="0 0 12 16" version="1.1" width="12" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M12 5l-8 8-4-4 1.5-1.5L4 10l6.5-6.5L12 5z"/></svg>
-                  <div class="select-menu-item-text">
-                    <input type="radio" name="do" id="do_subscribed" value="subscribed" />
-                    <span class="select-menu-item-heading">Watching</span>
-                    <span class="description">Be notified of all conversations.</span>
-                    <span class="js-select-button-text hidden-select-button-text">
-                      <svg class="octicon octicon-eye" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M8.06 2C3 2 0 8 0 8s3 6 8.06 6C13 14 16 8 16 8s-3-6-7.94-6zM8 12c-2.2 0-4-1.78-4-4 0-2.2 1.8-4 4-4 2.22 0 4 1.8 4 4 0 2.22-1.78 4-4 4zm2-4c0 1.11-.89 2-2 2-1.11 0-2-.89-2-2 0-1.11.89-2 2-2 1.11 0 2 .89 2 2z"/></svg>
-                        Unwatch
-                    </span>
-                  </div>
-                </div>
-
-                <div class="select-menu-item js-navigation-item " role="menuitem" tabindex="0">
-                  <svg class="octicon octicon-check select-menu-item-icon" viewBox="0 0 12 16" version="1.1" width="12" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M12 5l-8 8-4-4 1.5-1.5L4 10l6.5-6.5L12 5z"/></svg>
-                  <div class="select-menu-item-text">
-                    <input type="radio" name="do" id="do_ignore" value="ignore" />
-                    <span class="select-menu-item-heading">Ignoring</span>
-                    <span class="description">Never be notified.</span>
-                    <span class="js-select-button-text hidden-select-button-text">
-                      <svg class="octicon octicon-mute" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M8 2.81v10.38c0 .67-.81 1-1.28.53L3 10H1c-.55 0-1-.45-1-1V7c0-.55.45-1 1-1h2l3.72-3.72C7.19 1.81 8 2.14 8 2.81zm7.53 3.22l-1.06-1.06-1.97 1.97-1.97-1.97-1.06 1.06L11.44 8 9.47 9.97l1.06 1.06 1.97-1.97 1.97 1.97 1.06-1.06L13.56 8l1.97-1.97z"/></svg>
-                        Stop ignoring
-                    </span>
-                  </div>
-                </div>
-
-              </div>
-
-            </div>
-          </div>
-        </div>
-</form>
-  </li>
-
-  <li>
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
     
-  <div class="js-toggler-container js-social-container starring-container ">
-    <!-- '"` --><!-- </textarea></xmp> --></option></form><form class="starred js-social-form" action="/jimmyqiji/Wine-Quality-Regression/unstar" accept-charset="UTF-8" method="post"><input name="utf8" type="hidden" value="&#x2713;" /><input type="hidden" name="authenticity_token" value="W0bRolzOvJm6luSNzT6lGJRcEbOH8uIhdXPM7ANntHP9k7A76yX1w62MPyrkKf30Rblc5sxZLRkB3nVgNEbJ6g==" />
-      <input type="hidden" name="context" value="repository"></input>
-      <button
-        type="submit"
-        class="btn btn-sm btn-with-count js-toggler-target"
-        aria-label="Unstar this repository" title="Unstar jimmyqiji/Wine-Quality-Regression"
-        data-ga-click="Repository, click unstar button, action:blob#show; text:Unstar">
-        <svg class="octicon octicon-star" viewBox="0 0 14 16" version="1.1" width="14" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M14 6l-4.9-.64L7 1 4.9 5.36 0 6l3.6 3.26L2.67 14 7 11.67 11.33 14l-.93-4.74L14 6z"/></svg>
-        Unstar
-      </button>
-        <a class="social-count js-social-count" href="/jimmyqiji/Wine-Quality-Regression/stargazers"
-           aria-label="0 users starred this repository">
-          0
-        </a>
-</form>
-    <!-- '"` --><!-- </textarea></xmp> --></option></form><form class="unstarred js-social-form" action="/jimmyqiji/Wine-Quality-Regression/star" accept-charset="UTF-8" method="post"><input name="utf8" type="hidden" value="&#x2713;" /><input type="hidden" name="authenticity_token" value="Wi7dKfG3YNBPkUlha1YaOtOyuPQnTBFBClbobX8z+ElU/tXNmjg2mr+8MwQjvUsk7lbmXpaSPRKndKTDq1lWLg==" />
-      <input type="hidden" name="context" value="repository"></input>
-      <button
-        type="submit"
-        class="btn btn-sm btn-with-count js-toggler-target"
-        aria-label="Star this repository" title="Star jimmyqiji/Wine-Quality-Regression"
-        data-ga-click="Repository, click star button, action:blob#show; text:Star">
-        <svg class="octicon octicon-star" viewBox="0 0 14 16" version="1.1" width="14" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M14 6l-4.9-.64L7 1 4.9 5.36 0 6l3.6 3.26L2.67 14 7 11.67 11.33 14l-.93-4.74L14 6z"/></svg>
-        Star
-      </button>
-        <a class="social-count js-social-count" href="/jimmyqiji/Wine-Quality-Regression/stargazers"
-           aria-label="0 users starred this repository">
-          0
-        </a>
-</form>  </div>
-
-  </li>
-
-  <li>
-        <span class="btn btn-sm btn-with-count disabled tooltipped tooltipped-sw" aria-label="Cannot fork because you own this repository and are not a member of any organizations.">
-          <svg class="octicon octicon-repo-forked" viewBox="0 0 10 16" version="1.1" width="10" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M8 1a1.993 1.993 0 0 0-1 3.72V6L5 8 3 6V4.72A1.993 1.993 0 0 0 2 1a1.993 1.993 0 0 0-1 3.72V6.5l3 3v1.78A1.993 1.993 0 0 0 5 15a1.993 1.993 0 0 0 1-3.72V9.5l3-3V4.72A1.993 1.993 0 0 0 8 1zM2 4.2C1.34 4.2.8 3.65.8 3c0-.65.55-1.2 1.2-1.2.65 0 1.2.55 1.2 1.2 0 .65-.55 1.2-1.2 1.2zm3 10c-.66 0-1.2-.55-1.2-1.2 0-.65.55-1.2 1.2-1.2.65 0 1.2.55 1.2 1.2 0 .65-.55 1.2-1.2 1.2zm3-10c-.66 0-1.2-.55-1.2-1.2 0-.65.55-1.2 1.2-1.2.65 0 1.2.55 1.2 1.2 0 .65-.55 1.2-1.2 1.2z"/></svg>
-          Fork
-</span>
-    <a href="/jimmyqiji/Wine-Quality-Regression/network" class="social-count"
-       aria-label="0 users forked this repository">
-      0
-    </a>
-  </li>
-</ul>
-
-      <h1 class="public ">
-  <svg class="octicon octicon-repo" viewBox="0 0 12 16" version="1.1" width="12" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9H3V8h1v1zm0-3H3v1h1V6zm0-2H3v1h1V4zm0-2H3v1h1V2zm8-1v12c0 .55-.45 1-1 1H6v2l-1.5-1.5L3 16v-2H1c-.55 0-1-.45-1-1V1c0-.55.45-1 1-1h10c.55 0 1 .45 1 1zm-1 10H1v2h2v-1h3v1h5v-2zm0-10H2v9h9V1z"/></svg>
-  <span class="author" itemprop="author"><a class="url fn" rel="author" href="/jimmyqiji">jimmyqiji</a></span><!--
---><span class="path-divider">/</span><!--
---><strong itemprop="name"><a data-pjax="#js-repo-pjax-container" href="/jimmyqiji/Wine-Quality-Regression">Wine-Quality-Regression</a></strong>
-
-</h1>
-
-    </div>
-    
-<nav class="reponav js-repo-nav js-sidenav-container-pjax container"
-     itemscope
-     itemtype="http://schema.org/BreadcrumbList"
-     role="navigation"
-     data-pjax="#js-repo-pjax-container">
-
-  <span itemscope itemtype="http://schema.org/ListItem" itemprop="itemListElement">
-    <a class="js-selected-navigation-item selected reponav-item" itemprop="url" data-hotkey="g c" data-selected-links="repo_source repo_downloads repo_commits repo_releases repo_tags repo_branches repo_packages /jimmyqiji/Wine-Quality-Regression" href="/jimmyqiji/Wine-Quality-Regression">
-      <svg class="octicon octicon-code" viewBox="0 0 14 16" version="1.1" width="14" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M9.5 3L8 4.5 11.5 8 8 11.5 9.5 13 14 8 9.5 3zm-5 0L0 8l4.5 5L6 11.5 2.5 8 6 4.5 4.5 3z"/></svg>
-      <span itemprop="name">Code</span>
-      <meta itemprop="position" content="1">
-</a>  </span>
-
-    <span itemscope itemtype="http://schema.org/ListItem" itemprop="itemListElement">
-      <a itemprop="url" data-hotkey="g i" class="js-selected-navigation-item reponav-item" data-selected-links="repo_issues repo_labels repo_milestones /jimmyqiji/Wine-Quality-Regression/issues" href="/jimmyqiji/Wine-Quality-Regression/issues">
-        <svg class="octicon octicon-issue-opened" viewBox="0 0 14 16" version="1.1" width="14" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7 2.3c3.14 0 5.7 2.56 5.7 5.7s-2.56 5.7-5.7 5.7A5.71 5.71 0 0 1 1.3 8c0-3.14 2.56-5.7 5.7-5.7zM7 1C3.14 1 0 4.14 0 8s3.14 7 7 7 7-3.14 7-7-3.14-7-7-7zm1 3H6v5h2V4zm0 6H6v2h2v-2z"/></svg>
-        <span itemprop="name">Issues</span>
-        <span class="Counter">0</span>
-        <meta itemprop="position" content="2">
-</a>    </span>
-
-  <span itemscope itemtype="http://schema.org/ListItem" itemprop="itemListElement">
-    <a data-hotkey="g p" itemprop="url" class="js-selected-navigation-item reponav-item" data-selected-links="repo_pulls checks /jimmyqiji/Wine-Quality-Regression/pulls" href="/jimmyqiji/Wine-Quality-Regression/pulls">
-      <svg class="octicon octicon-git-pull-request" viewBox="0 0 12 16" version="1.1" width="12" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M11 11.28V5c-.03-.78-.34-1.47-.94-2.06C9.46 2.35 8.78 2.03 8 2H7V0L4 3l3 3V4h1c.27.02.48.11.69.31.21.2.3.42.31.69v6.28A1.993 1.993 0 0 0 10 15a1.993 1.993 0 0 0 1-3.72zm-1 2.92c-.66 0-1.2-.55-1.2-1.2 0-.65.55-1.2 1.2-1.2.65 0 1.2.55 1.2 1.2 0 .65-.55 1.2-1.2 1.2zM4 3c0-1.11-.89-2-2-2a1.993 1.993 0 0 0-1 3.72v6.56A1.993 1.993 0 0 0 2 15a1.993 1.993 0 0 0 1-3.72V4.72c.59-.34 1-.98 1-1.72zm-.8 10c0 .66-.55 1.2-1.2 1.2-.65 0-1.2-.55-1.2-1.2 0-.65.55-1.2 1.2-1.2.65 0 1.2.55 1.2 1.2zM2 4.2C1.34 4.2.8 3.65.8 3c0-.65.55-1.2 1.2-1.2.65 0 1.2.55 1.2 1.2 0 .65-.55 1.2-1.2 1.2z"/></svg>
-      <span itemprop="name">Pull requests</span>
-      <span class="Counter">0</span>
-      <meta itemprop="position" content="3">
-</a>  </span>
-
-    <a data-hotkey="g b" class="js-selected-navigation-item reponav-item" data-selected-links="repo_projects new_repo_project repo_project /jimmyqiji/Wine-Quality-Regression/projects" href="/jimmyqiji/Wine-Quality-Regression/projects">
-      <svg class="octicon octicon-project" viewBox="0 0 15 16" version="1.1" width="15" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M10 12h3V2h-3v10zm-4-2h3V2H6v8zm-4 4h3V2H2v12zm-1 1h13V1H1v14zM14 0H1a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1V1a1 1 0 0 0-1-1z"/></svg>
-      Projects
-      <span class="Counter" >0</span>
-</a>
-    <a class="js-selected-navigation-item reponav-item" data-hotkey="g w" data-selected-links="repo_wiki /jimmyqiji/Wine-Quality-Regression/wiki" href="/jimmyqiji/Wine-Quality-Regression/wiki">
-      <svg class="octicon octicon-book" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M3 5h4v1H3V5zm0 3h4V7H3v1zm0 2h4V9H3v1zm11-5h-4v1h4V5zm0 2h-4v1h4V7zm0 2h-4v1h4V9zm2-6v9c0 .55-.45 1-1 1H9.5l-1 1-1-1H2c-.55 0-1-.45-1-1V3c0-.55.45-1 1-1h5.5l1 1 1-1H15c.55 0 1 .45 1 1zm-8 .5L7.5 3H2v9h6V3.5zm7-.5H9.5l-.5.5V12h6V3z"/></svg>
-      Wiki
-</a>
-
-  <a class="js-selected-navigation-item reponav-item" data-selected-links="repo_graphs repo_contributors dependency_graph pulse /jimmyqiji/Wine-Quality-Regression/pulse" href="/jimmyqiji/Wine-Quality-Regression/pulse">
-    <svg class="octicon octicon-graph" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M16 14v1H0V0h1v14h15zM5 13H3V8h2v5zm4 0H7V3h2v10zm4 0h-2V6h2v7z"/></svg>
-    Insights
-</a>
-    <a class="js-selected-navigation-item reponav-item" data-selected-links="repo_settings repo_branch_settings hooks integration_installations repo_keys_settings issue_template_editor /jimmyqiji/Wine-Quality-Regression/settings" href="/jimmyqiji/Wine-Quality-Regression/settings">
-      <svg class="octicon octicon-gear" viewBox="0 0 14 16" version="1.1" width="14" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M14 8.77v-1.6l-1.94-.64-.45-1.09.88-1.84-1.13-1.13-1.81.91-1.09-.45-.69-1.92h-1.6l-.63 1.94-1.11.45-1.84-.88-1.13 1.13.91 1.81-.45 1.09L0 7.23v1.59l1.94.64.45 1.09-.88 1.84 1.13 1.13 1.81-.91 1.09.45.69 1.92h1.59l.63-1.94 1.11-.45 1.84.88 1.13-1.13-.92-1.81.47-1.09L14 8.75v.02zM7 11c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3z"/></svg>
-      Settings
-</a>
-</nav>
-
-
-  </div>
-
-<div class="container new-discussion-timeline experiment-repo-nav  ">
-  <div class="repository-content ">
-
-    
-  <a class="d-none js-permalink-shortcut" data-hotkey="y" href="/jimmyqiji/Wine-Quality-Regression/blob/2bc447bcd57be60fabe858299e067e55d908cccc/README.md">Permalink</a>
-
-  <!-- blob contrib key: blob_contributors:v21:d981217b310e5db44ba0b1b088fcd3e9 -->
-
-  
-
-  <div class="file-navigation">
-    
-<div class="select-menu branch-select-menu js-menu-container js-select-menu float-left">
-  <button class=" btn btn-sm select-menu-button js-menu-target css-truncate" data-hotkey="w"
-    
-    type="button" aria-label="Switch branches or tags" aria-expanded="false" aria-haspopup="true">
-      <i>Branch:</i>
-      <span class="js-select-button css-truncate-target">master</span>
-  </button>
-
-  <div class="select-menu-modal-holder js-menu-content js-navigation-container" data-pjax>
-
-    <div class="select-menu-modal">
-      <div class="select-menu-header">
-        <svg class="octicon octicon-x js-menu-close" role="img" aria-label="Close" viewBox="0 0 12 16" version="1.1" width="12" height="16"><path fill-rule="evenodd" d="M7.48 8l3.75 3.75-1.48 1.48L6 9.48l-3.75 3.75-1.48-1.48L4.52 8 .77 4.25l1.48-1.48L6 6.52l3.75-3.75 1.48 1.48L7.48 8z"/></svg>
-        <span class="select-menu-title">Switch branches/tags</span>
-      </div>
-
-      <div class="select-menu-filters">
-        <div class="select-menu-text-filter">
-          <input type="text" aria-label="Find or create a branch…" id="context-commitish-filter-field" class="form-control js-filterable-field js-navigation-enable" placeholder="Find or create a branch…">
-        </div>
-        <div class="select-menu-tabs">
-          <ul>
-            <li class="select-menu-tab">
-              <a href="#" data-tab-filter="branches" data-filter-placeholder="Find or create a branch…" class="js-select-menu-tab" role="tab">Branches</a>
-            </li>
-            <li class="select-menu-tab">
-              <a href="#" data-tab-filter="tags" data-filter-placeholder="Find a tag…" class="js-select-menu-tab" role="tab">Tags</a>
-            </li>
-          </ul>
-        </div>
-      </div>
-
-      <div class="select-menu-list select-menu-tab-bucket js-select-menu-tab-bucket" data-tab-filter="branches" role="menu">
-
-        <div data-filterable-for="context-commitish-filter-field" data-filterable-type="substring">
-
-
-            <a class="select-menu-item js-navigation-item js-navigation-open selected"
-               href="/jimmyqiji/Wine-Quality-Regression/blob/master/README.md"
-               data-name="master"
-               data-skip-pjax="true"
-               rel="nofollow">
-              <svg class="octicon octicon-check select-menu-item-icon" viewBox="0 0 12 16" version="1.1" width="12" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M12 5l-8 8-4-4 1.5-1.5L4 10l6.5-6.5L12 5z"/></svg>
-              <span class="select-menu-item-text css-truncate-target js-select-menu-filter-text">
-                master
-              </span>
-            </a>
-        </div>
-
-          <!-- '"` --><!-- </textarea></xmp> --></option></form><form class="js-create-branch select-menu-item select-menu-new-item-form js-navigation-item js-new-item-form" action="/jimmyqiji/Wine-Quality-Regression/branches" accept-charset="UTF-8" method="post"><input name="utf8" type="hidden" value="&#x2713;" /><input type="hidden" name="authenticity_token" value="dpQ1rFO10sTLR6FEPEXVG1XBjhxIiIZMObqBV7C73fYrlKyEtqc1JmP87GV/jAtkZ5NJ6H8jXt1iJg/C+w0EPQ==" />
-          <svg class="octicon octicon-git-branch select-menu-item-icon" viewBox="0 0 10 16" version="1.1" width="10" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M10 5c0-1.11-.89-2-2-2a1.993 1.993 0 0 0-1 3.72v.3c-.02.52-.23.98-.63 1.38-.4.4-.86.61-1.38.63-.83.02-1.48.16-2 .45V4.72a1.993 1.993 0 0 0-1-3.72C.88 1 0 1.89 0 3a2 2 0 0 0 1 1.72v6.56c-.59.35-1 .99-1 1.72 0 1.11.89 2 2 2 1.11 0 2-.89 2-2 0-.53-.2-1-.53-1.36.09-.06.48-.41.59-.47.25-.11.56-.17.94-.17 1.05-.05 1.95-.45 2.75-1.25S8.95 7.77 9 6.73h-.02C9.59 6.37 10 5.73 10 5zM2 1.8c.66 0 1.2.55 1.2 1.2 0 .65-.55 1.2-1.2 1.2C1.35 4.2.8 3.65.8 3c0-.65.55-1.2 1.2-1.2zm0 12.41c-.66 0-1.2-.55-1.2-1.2 0-.65.55-1.2 1.2-1.2.65 0 1.2.55 1.2 1.2 0 .65-.55 1.2-1.2 1.2zm6-8c-.66 0-1.2-.55-1.2-1.2 0-.65.55-1.2 1.2-1.2.65 0 1.2.55 1.2 1.2 0 .65-.55 1.2-1.2 1.2z"/></svg>
-            <div class="select-menu-item-text">
-              <span class="select-menu-item-heading">Create branch: <span class="js-new-item-name"></span></span>
-              <span class="description">from ‘master’</span>
-            </div>
-            <input type="hidden" name="name" id="name" class="js-new-item-value">
-            <input type="hidden" name="branch" id="branch" value="master">
-            <input type="hidden" name="path" id="path" value="README.md">
-</form>
-      </div>
-
-      <div class="select-menu-list select-menu-tab-bucket js-select-menu-tab-bucket" data-tab-filter="tags">
-        <div data-filterable-for="context-commitish-filter-field" data-filterable-type="substring">
-
-
-        </div>
-
-        <div class="select-menu-no-results">Nothing to show</div>
-      </div>
-
-    </div>
-  </div>
-</div>
-
-    <div class="BtnGroup float-right">
-      <a href="/jimmyqiji/Wine-Quality-Regression/find/master"
-            class="js-pjax-capture-input btn btn-sm BtnGroup-item"
-            data-pjax
-            data-hotkey="t">
-        Find file
-      </a>
-      <clipboard-copy for="blob-path" class="btn btn-sm BtnGroup-item">
-        Copy path
-      </clipboard-copy>
-    </div>
-    <div id="blob-path" class="breadcrumb">
-      <span class="repo-root js-repo-root"><span class="js-path-segment"><a data-pjax="true" href="/jimmyqiji/Wine-Quality-Regression"><span>Wine-Quality-Regression</span></a></span></span><span class="separator">/</span><strong class="final-path">README.md</strong>
-    </div>
-  </div>
-
-
-  <include-fragment src="/jimmyqiji/Wine-Quality-Regression/contributors/master/README.md" class="commit-tease commit-loader">
-    <div>
-      Fetching contributors&hellip;
-    </div>
-
-    <div class="commit-tease-contributors">
-        <img alt="" class="loader-loading float-left" src="https://assets-cdn.github.com/images/spinners/octocat-spinner-32-EAF2F5.gif" width="16" height="16" />
-      <span class="loader-error">Cannot retrieve contributors at this time</span>
-    </div>
-</include-fragment>
-
-
-  <div class="file">
-    <div class="file-header">
-  <div class="file-actions">
-
-    <div class="BtnGroup">
-      <a id="raw-url" class="btn btn-sm BtnGroup-item" href="/jimmyqiji/Wine-Quality-Regression/raw/master/README.md">Raw</a>
-        <a class="btn btn-sm js-update-url-with-hash BtnGroup-item" data-hotkey="b" href="/jimmyqiji/Wine-Quality-Regression/blame/master/README.md">Blame</a>
-      <a rel="nofollow" class="btn btn-sm BtnGroup-item" href="/jimmyqiji/Wine-Quality-Regression/commits/master/README.md">History</a>
-    </div>
-
-        <a class="btn-octicon tooltipped tooltipped-nw"
-           href="https://desktop.github.com"
-           aria-label="Open this file in GitHub Desktop"
-           data-ga-click="Repository, open with desktop, type:windows">
-            <svg class="octicon octicon-device-desktop" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M15 2H1c-.55 0-1 .45-1 1v9c0 .55.45 1 1 1h5.34c-.25.61-.86 1.39-2.34 2h8c-1.48-.61-2.09-1.39-2.34-2H15c.55 0 1-.45 1-1V3c0-.55-.45-1-1-1zm0 9H1V3h14v8z"/></svg>
-        </a>
-
-          <!-- '"` --><!-- </textarea></xmp> --></option></form><form class="inline-form js-update-url-with-hash" action="/jimmyqiji/Wine-Quality-Regression/edit/master/README.md" accept-charset="UTF-8" method="post"><input name="utf8" type="hidden" value="&#x2713;" /><input type="hidden" name="authenticity_token" value="lofJnEetrANvlTwdb15bMEZvzgjIHcKKBUsOyny90LlfjQ6GIuzs2ZVWL6EJfNaj40/2Vr4ghtPguhKeKvfNxA==" />
-            <button class="btn-octicon tooltipped tooltipped-nw" type="submit"
-              aria-label="Edit this file" data-hotkey="e" data-disable-with>
-              <svg class="octicon octicon-pencil" viewBox="0 0 14 16" version="1.1" width="14" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M0 12v3h3l8-8-3-3-8 8zm3 2H1v-2h1v1h1v1zm10.3-9.3L12 6 9 3l1.3-1.3a.996.996 0 0 1 1.41 0l1.59 1.59c.39.39.39 1.02 0 1.41z"/></svg>
-            </button>
-</form>
-        <!-- '"` --><!-- </textarea></xmp> --></option></form><form class="inline-form" action="/jimmyqiji/Wine-Quality-Regression/delete/master/README.md" accept-charset="UTF-8" method="post"><input name="utf8" type="hidden" value="&#x2713;" /><input type="hidden" name="authenticity_token" value="1oIPh5xqy3b82YttqM5ns5cQarwVGMwRcyO6j45laseRzSPrOT/zEEEhjdd0AxESDbaVUhaMv0xCyBogfH0/ig==" />
-          <button class="btn-octicon btn-octicon-danger tooltipped tooltipped-nw" type="submit"
-            aria-label="Delete this file" data-disable-with>
-            <svg class="octicon octicon-trashcan" viewBox="0 0 12 16" version="1.1" width="12" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M11 2H9c0-.55-.45-1-1-1H5c-.55 0-1 .45-1 1H2c-.55 0-1 .45-1 1v1c0 .55.45 1 1 1v9c0 .55.45 1 1 1h7c.55 0 1-.45 1-1V5c.55 0 1-.45 1-1V3c0-.55-.45-1-1-1zm-1 12H3V5h1v8h1V5h1v8h1V5h1v8h1V5h1v9zm1-10H2V3h9v1z"/></svg>
-          </button>
-</form>  </div>
-
-  <div class="file-info">
-      1 lines (1 sloc)
-      <span class="file-info-divider"></span>
-    25 Bytes
-  </div>
-</div>
-
-    
-  <div id="readme" class="readme blob instapaper_body">
-    <article class="markdown-body entry-content" itemprop="text"><h1><a id="user-content-wine-quality-regression" class="anchor" aria-hidden="true" href="#wine-quality-regression"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Wine-Quality-Regression</h1>
-</article>
-  </div>
-
-  </div>
-
-  <button type="button" data-facebox="#jump-to-line" data-facebox-class="linejump" data-hotkey="l" class="d-none">Jump to Line</button>
-  <div id="jump-to-line" style="display:none">
-    <!-- '"` --><!-- </textarea></xmp> --></option></form><form class="js-jump-to-line-form" action="" accept-charset="UTF-8" method="get"><input name="utf8" type="hidden" value="&#x2713;" />
-      <input class="form-control linejump-input js-jump-to-line-field" type="text" placeholder="Jump to line&hellip;" aria-label="Jump to line" autofocus>
-      <button type="submit" class="btn">Go</button>
-</form>  </div>
-
-
-  </div>
-  <div class="modal-backdrop js-touch-events"></div>
-</div>
-
-    </div>
-  </div>
-
-  </div>
-
-      
-<div class="footer container-lg px-3" role="contentinfo">
-  <div class="position-relative d-flex flex-justify-between pt-6 pb-2 mt-6 f6 text-gray border-top border-gray-light ">
-    <ul class="list-style-none d-flex flex-wrap ">
-      <li class="mr-3">&copy; 2018 <span title="0.38677s from unicorn-db859f8cf-kxg8p">GitHub</span>, Inc.</li>
-        <li class="mr-3"><a data-ga-click="Footer, go to terms, text:terms" href="https://github.com/site/terms">Terms</a></li>
-        <li class="mr-3"><a data-ga-click="Footer, go to privacy, text:privacy" href="https://github.com/site/privacy">Privacy</a></li>
-        <li class="mr-3"><a href="https://help.github.com/articles/github-security/" data-ga-click="Footer, go to security, text:security">Security</a></li>
-        <li class="mr-3"><a href="https://status.github.com/" data-ga-click="Footer, go to status, text:status">Status</a></li>
-        <li><a data-ga-click="Footer, go to help, text:help" href="https://help.github.com">Help</a></li>
-    </ul>
-
-    <a aria-label="Homepage" title="GitHub" class="footer-octicon" href="https://github.com">
-      <svg height="24" class="octicon octicon-mark-github" viewBox="0 0 16 16" version="1.1" width="24" aria-hidden="true"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
-</a>
-   <ul class="list-style-none d-flex flex-wrap ">
-        <li class="mr-3"><a data-ga-click="Footer, go to contact, text:contact" href="https://github.com/contact">Contact GitHub</a></li>
-      <li class="mr-3"><a href="https://developer.github.com" data-ga-click="Footer, go to api, text:api">API</a></li>
-      <li class="mr-3"><a href="https://training.github.com" data-ga-click="Footer, go to training, text:training">Training</a></li>
-      <li class="mr-3"><a href="https://shop.github.com" data-ga-click="Footer, go to shop, text:shop">Shop</a></li>
-        <li class="mr-3"><a href="https://blog.github.com" data-ga-click="Footer, go to blog, text:blog">Blog</a></li>
-        <li><a data-ga-click="Footer, go to about, text:about" href="https://github.com/about">About</a></li>
-
-    </ul>
-  </div>
-  <div class="d-flex flex-justify-center pb-6">
-    <span class="f6 text-gray-light"></span>
-  </div>
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>fixed acidity</th>
+      <th>volatile acidity</th>
+      <th>citric acid</th>
+      <th>residual sugar</th>
+      <th>chlorides</th>
+      <th>free sulfur dioxide</th>
+      <th>total sulfur dioxide</th>
+      <th>density</th>
+      <th>pH</th>
+      <th>sulphates</th>
+      <th>alcohol</th>
+      <th>quality</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>count</th>
+      <td>1599.000000</td>
+      <td>1599.000000</td>
+      <td>1599.000000</td>
+      <td>1599.000000</td>
+      <td>1599.000000</td>
+      <td>1599.000000</td>
+      <td>1599.000000</td>
+      <td>1599.000000</td>
+      <td>1599.000000</td>
+      <td>1599.000000</td>
+      <td>1599.000000</td>
+      <td>1599.000000</td>
+    </tr>
+    <tr>
+      <th>mean</th>
+      <td>8.319637</td>
+      <td>0.527821</td>
+      <td>0.270976</td>
+      <td>2.538806</td>
+      <td>0.087467</td>
+      <td>15.874922</td>
+      <td>46.467792</td>
+      <td>0.996747</td>
+      <td>3.311113</td>
+      <td>0.658149</td>
+      <td>10.422983</td>
+      <td>5.636023</td>
+    </tr>
+    <tr>
+      <th>std</th>
+      <td>1.741096</td>
+      <td>0.179060</td>
+      <td>0.194801</td>
+      <td>1.409928</td>
+      <td>0.047065</td>
+      <td>10.460157</td>
+      <td>32.895324</td>
+      <td>0.001887</td>
+      <td>0.154386</td>
+      <td>0.169507</td>
+      <td>1.065668</td>
+      <td>0.807569</td>
+    </tr>
+    <tr>
+      <th>min</th>
+      <td>4.600000</td>
+      <td>0.120000</td>
+      <td>0.000000</td>
+      <td>0.900000</td>
+      <td>0.012000</td>
+      <td>1.000000</td>
+      <td>6.000000</td>
+      <td>0.990070</td>
+      <td>2.740000</td>
+      <td>0.330000</td>
+      <td>8.400000</td>
+      <td>3.000000</td>
+    </tr>
+    <tr>
+      <th>25%</th>
+      <td>7.100000</td>
+      <td>0.390000</td>
+      <td>0.090000</td>
+      <td>1.900000</td>
+      <td>0.070000</td>
+      <td>7.000000</td>
+      <td>22.000000</td>
+      <td>0.995600</td>
+      <td>3.210000</td>
+      <td>0.550000</td>
+      <td>9.500000</td>
+      <td>5.000000</td>
+    </tr>
+    <tr>
+      <th>50%</th>
+      <td>7.900000</td>
+      <td>0.520000</td>
+      <td>0.260000</td>
+      <td>2.200000</td>
+      <td>0.079000</td>
+      <td>14.000000</td>
+      <td>38.000000</td>
+      <td>0.996750</td>
+      <td>3.310000</td>
+      <td>0.620000</td>
+      <td>10.200000</td>
+      <td>6.000000</td>
+    </tr>
+    <tr>
+      <th>75%</th>
+      <td>9.200000</td>
+      <td>0.640000</td>
+      <td>0.420000</td>
+      <td>2.600000</td>
+      <td>0.090000</td>
+      <td>21.000000</td>
+      <td>62.000000</td>
+      <td>0.997835</td>
+      <td>3.400000</td>
+      <td>0.730000</td>
+      <td>11.100000</td>
+      <td>6.000000</td>
+    </tr>
+    <tr>
+      <th>max</th>
+      <td>15.900000</td>
+      <td>1.580000</td>
+      <td>1.000000</td>
+      <td>15.500000</td>
+      <td>0.611000</td>
+      <td>72.000000</td>
+      <td>289.000000</td>
+      <td>1.003690</td>
+      <td>4.010000</td>
+      <td>2.000000</td>
+      <td>14.900000</td>
+      <td>8.000000</td>
+    </tr>
+  </tbody>
+</table>
 </div>
 
 
 
-  <div id="ajax-error-message" class="ajax-error-message flash flash-error">
-    <svg class="octicon octicon-alert" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M8.893 1.5c-.183-.31-.52-.5-.887-.5s-.703.19-.886.5L.138 13.499a.98.98 0 0 0 0 1.001c.193.31.53.501.886.501h13.964c.367 0 .704-.19.877-.5a1.03 1.03 0 0 0 .01-1.002L8.893 1.5zm.133 11.497H6.987v-2.003h2.039v2.003zm0-3.004H6.987V5.987h2.039v4.006z"/></svg>
-    <button type="button" class="flash-close js-ajax-error-dismiss" aria-label="Dismiss error">
-      <svg class="octicon octicon-x" viewBox="0 0 12 16" version="1.1" width="12" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.48 8l3.75 3.75-1.48 1.48L6 9.48l-3.75 3.75-1.48-1.48L4.52 8 .77 4.25l1.48-1.48L6 6.52l3.75-3.75 1.48 1.48L7.48 8z"/></svg>
-    </button>
-    You can’t perform that action at this time.
-  </div>
+We see that the magnitudes of the features are drastically different, later we'll have to standardize the features before we perform any sort of optimization
 
 
+# Feature Selection
+Notice that the Quality column of data is the desired value that we wish to predict. So we split data into X (the features) and y (Quality). 
+
+As we're trying to predict the value of y, it's only natural that we'd want to get to know y better 
+
+
+```python
+y = data['quality']
+X = data.drop(['quality'], axis = 1)
+
+sns.countplot(y, palette = sns.cubehelix_palette(8)).set_title('Count by Quality');
+```
+
+
+![png](./Output/output_12_0.png)
+
+
+Quality has a distribution that is approximately normal, however, due to the few data collected for quality below 3 and above 8, it may be hard to predict those values. When we train the model later, we'll remember to use different weights for the classes inversely proportional to their frequency.
+
+Now, we split the data into our test-set and training-set using train_test_split from from sklearn.model_selection
+
+
+```python
+train_data, test_data = train_test_split(data, test_size = 0.2, random_state = 817, stratify = y)
+X_train = train_data.drop(['quality'], axis = 1)
+X_test = test_data.drop(['quality'], axis = 1)
+y_train = train_data['quality']
+y_test = test_data['quality']
+
+print("X_train dimensions: ", X_train.shape)
+print("X_test dimensions: ", X_test.shape)
+print("Test set proportion: %.2f" % (X_test.shape[0]/(X_test.shape[0] + X_train.shape[0])))
+print("\nX_train: ")
+X_train.head()
+
+df_y_train = pd.DataFrame(y_train, columns=['quality'])
+df_y_train.head()
+```
+
+    X_train dimensions:  (1279, 11)
+    X_test dimensions:  (320, 11)
+    Test set proportion: 0.20
     
-    <script crossorigin="anonymous" integrity="sha512-UnFBbWLWINL5SNsiUIZz8VespQvO2T8EosK6fJBVU38JaNDEuEN+ptuOyyVWqHki5g7hpRplwkGAfKJ4JZFgUw==" type="application/javascript" src="https://assets-cdn.github.com/assets/frameworks-0f74238fcdfc9378ad97c551ed0cc50b.js"></script>
+    X_train: 
+
+
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
     
-    <script crossorigin="anonymous" async="async" integrity="sha512-JrVGAPf+MYIg8k76G4sJrjvaw2wPdcC+VITzWjewJSsJEDT9mnvxQ2a2o5sI+thvYlbpzPYNAU6iBjcuQkFkoA==" type="application/javascript" src="https://assets-cdn.github.com/assets/github-d8b6a7c8ba53728f3147ef522c9fb55c.js"></script>
-    
-    
-    
-  <div class="js-stale-session-flash stale-session-flash flash flash-warn flash-banner d-none">
-    <svg class="octicon octicon-alert" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M8.893 1.5c-.183-.31-.52-.5-.887-.5s-.703.19-.886.5L.138 13.499a.98.98 0 0 0 0 1.001c.193.31.53.501.886.501h13.964c.367 0 .704-.19.877-.5a1.03 1.03 0 0 0 .01-1.002L8.893 1.5zm.133 11.497H6.987v-2.003h2.039v2.003zm0-3.004H6.987V5.987h2.039v4.006z"/></svg>
-    <span class="signed-in-tab-flash">You signed in with another tab or window. <a href="">Reload</a> to refresh your session.</span>
-    <span class="signed-out-tab-flash">You signed out in another tab or window. <a href="">Reload</a> to refresh your session.</span>
-  </div>
-  <div class="facebox" id="facebox" style="display:none;">
-  <div class="facebox-popup">
-    <div class="facebox-content" role="dialog" aria-labelledby="facebox-header" aria-describedby="facebox-description">
-    </div>
-    <button type="button" class="facebox-close js-facebox-close" aria-label="Close modal">
-      <svg class="octicon octicon-x" viewBox="0 0 12 16" version="1.1" width="12" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.48 8l3.75 3.75-1.48 1.48L6 9.48l-3.75 3.75-1.48-1.48L4.52 8 .77 4.25l1.48-1.48L6 6.52l3.75-3.75 1.48 1.48L7.48 8z"/></svg>
-    </button>
-  </div>
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>fixed acidity</th>
+      <th>volatile acidity</th>
+      <th>citric acid</th>
+      <th>residual sugar</th>
+      <th>chlorides</th>
+      <th>free sulfur dioxide</th>
+      <th>total sulfur dioxide</th>
+      <th>density</th>
+      <th>pH</th>
+      <th>sulphates</th>
+      <th>alcohol</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>797</th>
+      <td>9.3</td>
+      <td>0.37</td>
+      <td>0.44</td>
+      <td>1.6</td>
+      <td>0.038</td>
+      <td>21.0</td>
+      <td>42.0</td>
+      <td>0.99526</td>
+      <td>3.24</td>
+      <td>0.81</td>
+      <td>10.8</td>
+    </tr>
+    <tr>
+      <th>1386</th>
+      <td>7.4</td>
+      <td>0.64</td>
+      <td>0.07</td>
+      <td>1.8</td>
+      <td>0.100</td>
+      <td>8.0</td>
+      <td>23.0</td>
+      <td>0.99610</td>
+      <td>3.30</td>
+      <td>0.58</td>
+      <td>9.6</td>
+    </tr>
+    <tr>
+      <th>40</th>
+      <td>7.3</td>
+      <td>0.45</td>
+      <td>0.36</td>
+      <td>5.9</td>
+      <td>0.074</td>
+      <td>12.0</td>
+      <td>87.0</td>
+      <td>0.99780</td>
+      <td>3.33</td>
+      <td>0.83</td>
+      <td>10.5</td>
+    </tr>
+    <tr>
+      <th>433</th>
+      <td>12.3</td>
+      <td>0.39</td>
+      <td>0.63</td>
+      <td>2.3</td>
+      <td>0.091</td>
+      <td>6.0</td>
+      <td>18.0</td>
+      <td>1.00040</td>
+      <td>3.16</td>
+      <td>0.49</td>
+      <td>9.5</td>
+    </tr>
+    <tr>
+      <th>874</th>
+      <td>10.4</td>
+      <td>0.38</td>
+      <td>0.46</td>
+      <td>2.1</td>
+      <td>0.104</td>
+      <td>6.0</td>
+      <td>10.0</td>
+      <td>0.99664</td>
+      <td>3.12</td>
+      <td>0.65</td>
+      <td>11.8</td>
+    </tr>
+  </tbody>
+</table>
 </div>
 
-  <div class="Popover js-hovercard-content position-absolute" style="display: none; outline: none;" tabindex="0">
-  <div class="Popover-message Popover-message--bottom-left Popover-message--large Box box-shadow-large" style="width:360px;">
-  </div>
+
+
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+    
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>quality</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>797</th>
+      <td>7</td>
+    </tr>
+    <tr>
+      <th>1386</th>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>40</th>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>433</th>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>874</th>
+      <td>7</td>
+    </tr>
+  </tbody>
+</table>
 </div>
 
-<div id="hovercard-aria-description" class="sr-only">
-  Press h to open a hovercard with more details.
+
+
+# Standardization
+
+To allow convienient graphing, we will now standardize our dataset
+
+
+```python
+from sklearn.preprocessing import StandardScaler
+
+scaler = StandardScaler().fit(X_train)
+X_train_scaled = scaler.transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+X_train_scaled = pd.DataFrame(X_train_scaled, columns=X_train.columns)
+X_test_scaled = pd.DataFrame(X_test_scaled, columns=X_test.columns)
+
+print("\nTraining set stats (note that mean is around 0 and std around 1) :")
+X_train_scaled.describe()
+print("\nTest set stats (note the deviation of mean from 0 and std from 1): ")
+X_test_scaled.describe()
+```
+
+
+    Training set stats (note that mean is around 0 and std around 1) :
+
+
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+    
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>fixed acidity</th>
+      <th>volatile acidity</th>
+      <th>citric acid</th>
+      <th>residual sugar</th>
+      <th>chlorides</th>
+      <th>free sulfur dioxide</th>
+      <th>total sulfur dioxide</th>
+      <th>density</th>
+      <th>pH</th>
+      <th>sulphates</th>
+      <th>alcohol</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>count</th>
+      <td>1.279000e+03</td>
+      <td>1.279000e+03</td>
+      <td>1.279000e+03</td>
+      <td>1.279000e+03</td>
+      <td>1.279000e+03</td>
+      <td>1.279000e+03</td>
+      <td>1.279000e+03</td>
+      <td>1.279000e+03</td>
+      <td>1.279000e+03</td>
+      <td>1.279000e+03</td>
+      <td>1.279000e+03</td>
+    </tr>
+    <tr>
+      <th>mean</th>
+      <td>5.874894e-16</td>
+      <td>2.178780e-16</td>
+      <td>1.197895e-17</td>
+      <td>-3.023003e-16</td>
+      <td>1.555093e-16</td>
+      <td>-1.170118e-16</td>
+      <td>6.341031e-17</td>
+      <td>3.557037e-14</td>
+      <td>4.408601e-15</td>
+      <td>-2.130170e-16</td>
+      <td>7.446914e-16</td>
+    </tr>
+    <tr>
+      <th>std</th>
+      <td>1.000391e+00</td>
+      <td>1.000391e+00</td>
+      <td>1.000391e+00</td>
+      <td>1.000391e+00</td>
+      <td>1.000391e+00</td>
+      <td>1.000391e+00</td>
+      <td>1.000391e+00</td>
+      <td>1.000391e+00</td>
+      <td>1.000391e+00</td>
+      <td>1.000391e+00</td>
+      <td>1.000391e+00</td>
+    </tr>
+    <tr>
+      <th>min</th>
+      <td>-2.126191e+00</td>
+      <td>-2.289244e+00</td>
+      <td>-1.398924e+00</td>
+      <td>-1.136506e+00</td>
+      <td>-1.576773e+00</td>
+      <td>-1.426875e+00</td>
+      <td>-1.217252e+00</td>
+      <td>-3.471959e+00</td>
+      <td>-3.639059e+00</td>
+      <td>-1.955538e+00</td>
+      <td>-1.910806e+00</td>
+    </tr>
+    <tr>
+      <th>25%</th>
+      <td>-6.958022e-01</td>
+      <td>-7.763849e-01</td>
+      <td>-9.363400e-01</td>
+      <td>-4.468813e-01</td>
+      <td>-3.629695e-01</td>
+      <td>-8.516878e-01</td>
+      <td>-7.444271e-01</td>
+      <td>-5.872507e-01</td>
+      <td>-6.393366e-01</td>
+      <td>-6.418863e-01</td>
+      <td>-8.793918e-01</td>
+    </tr>
+    <tr>
+      <th>50%</th>
+      <td>-2.380776e-01</td>
+      <td>-4.797096e-02</td>
+      <td>-6.257001e-02</td>
+      <td>-2.399938e-01</td>
+      <td>-1.746207e-01</td>
+      <td>-1.806361e-01</td>
+      <td>-2.716019e-01</td>
+      <td>-1.343884e-02</td>
+      <td>-6.492170e-02</td>
+      <td>-2.239062e-01</td>
+      <td>-2.230370e-01</td>
+    </tr>
+    <tr>
+      <th>75%</th>
+      <td>5.629404e-01</td>
+      <td>6.244111e-01</td>
+      <td>7.598017e-01</td>
+      <td>3.585619e-02</td>
+      <td>5.558344e-02</td>
+      <td>4.904157e-01</td>
+      <td>4.671876e-01</td>
+      <td>5.760224e-01</td>
+      <td>5.733170e-01</td>
+      <td>4.329196e-01</td>
+      <td>6.208478e-01</td>
+    </tr>
+    <tr>
+      <th>max</th>
+      <td>4.339168e+00</td>
+      <td>5.891404e+00</td>
+      <td>3.740899e+00</td>
+      <td>8.932019e+00</td>
+      <td>1.095889e+01</td>
+      <td>5.379507e+00</td>
+      <td>7.145844e+00</td>
+      <td>3.632875e+00</td>
+      <td>4.466573e+00</td>
+      <td>8.016272e+00</td>
+      <td>4.183917e+00</td>
+    </tr>
+  </tbody>
+</table>
 </div>
 
 
-  </body>
-</html>
 
+
+    Test set stats (note the deviation of mean from 0 and std from 1): 
+
+
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+    
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>fixed acidity</th>
+      <th>volatile acidity</th>
+      <th>citric acid</th>
+      <th>residual sugar</th>
+      <th>chlorides</th>
+      <th>free sulfur dioxide</th>
+      <th>total sulfur dioxide</th>
+      <th>density</th>
+      <th>pH</th>
+      <th>sulphates</th>
+      <th>alcohol</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>count</th>
+      <td>320.000000</td>
+      <td>320.000000</td>
+      <td>320.000000</td>
+      <td>320.000000</td>
+      <td>320.000000</td>
+      <td>320.000000</td>
+      <td>320.000000</td>
+      <td>320.000000</td>
+      <td>320.000000</td>
+      <td>320.000000</td>
+      <td>320.000000</td>
+    </tr>
+    <tr>
+      <th>mean</th>
+      <td>0.010095</td>
+      <td>-0.020743</td>
+      <td>-0.030767</td>
+      <td>-0.031706</td>
+      <td>0.012813</td>
+      <td>-0.004485</td>
+      <td>-0.106759</td>
+      <td>0.054522</td>
+      <td>0.030016</td>
+      <td>0.019418</td>
+      <td>-0.069741</td>
+    </tr>
+    <tr>
+      <th>std</th>
+      <td>0.980664</td>
+      <td>1.016276</td>
+      <td>1.005836</td>
+      <td>0.851896</td>
+      <td>0.922160</td>
+      <td>1.013733</td>
+      <td>0.845762</td>
+      <td>0.918557</td>
+      <td>0.923915</td>
+      <td>1.059326</td>
+      <td>0.994140</td>
+    </tr>
+    <tr>
+      <th>min</th>
+      <td>-1.897329</td>
+      <td>-2.065117</td>
+      <td>-1.398924</td>
+      <td>-0.929619</td>
+      <td>-1.011727</td>
+      <td>-1.235146</td>
+      <td>-1.217252</td>
+      <td>-2.689489</td>
+      <td>-2.745524</td>
+      <td>-1.597269</td>
+      <td>-1.348217</td>
+    </tr>
+    <tr>
+      <th>25%</th>
+      <td>-0.638587</td>
+      <td>-0.776385</td>
+      <td>-0.897791</td>
+      <td>-0.446881</td>
+      <td>-0.342042</td>
+      <td>-0.755823</td>
+      <td>-0.744427</td>
+      <td>-0.524653</td>
+      <td>-0.575513</td>
+      <td>-0.701598</td>
+      <td>-0.879392</td>
+    </tr>
+    <tr>
+      <th>50%</th>
+      <td>-0.238078</td>
+      <td>-0.104003</td>
+      <td>-0.165366</td>
+      <td>-0.239994</td>
+      <td>-0.153693</td>
+      <td>-0.276501</td>
+      <td>-0.330705</td>
+      <td>0.090891</td>
+      <td>0.062726</td>
+      <td>-0.283618</td>
+      <td>-0.363684</td>
+    </tr>
+    <tr>
+      <th>75%</th>
+      <td>0.448509</td>
+      <td>0.624411</td>
+      <td>0.811200</td>
+      <td>0.035856</td>
+      <td>0.060815</td>
+      <td>0.490416</td>
+      <td>0.297266</td>
+      <td>0.591672</td>
+      <td>0.589273</td>
+      <td>0.492631</td>
+      <td>0.527083</td>
+    </tr>
+    <tr>
+      <th>max</th>
+      <td>3.824228</td>
+      <td>3.369971</td>
+      <td>2.455943</td>
+      <td>5.828707</td>
+      <td>7.945307</td>
+      <td>4.996049</td>
+      <td>2.890417</td>
+      <td>2.855620</td>
+      <td>4.466573</td>
+      <td>5.747237</td>
+      <td>2.964972</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+Note that we applied the standard scaler fitted by the training set on the test set as well, this is because we are not supposed to know anything about the test set
+
+Now, on to analyzing the features for the learning algorithms:
+
+First, let's look at the correlation between the variables and Quality
+
+
+Since the value we're trying to classify is discrete, a scatterplot would not help much.
+
+So, further data graphing (this is where standardization helped):
+
+# Swarmplot
+
+To modify our data into the format allowed by swarmplot, we use melt to transform the dataset
+
+reindexing y_train to concat it with X_train_scaled:
+
+
+```python
+print("y_train before re-indexing: ")
+df_y_train.head()
+print("y_train after re-indexing")
+df_y_train.reset_index(drop=True, inplace=True)
+df_y_train.head()
+print("The concatenated train_data_scaled: ")
+train_data_scaled = pd.concat([X_train_scaled, df_y_train], axis=1)
+train_data_scaled.head()
+```
+
+    y_train before re-indexing: 
+
+
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+    
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>quality</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>797</th>
+      <td>7</td>
+    </tr>
+    <tr>
+      <th>1386</th>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>40</th>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>433</th>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>874</th>
+      <td>7</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+    y_train after re-indexing
+
+
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+    
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>quality</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>7</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>7</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+    The concatenated train_data_scaled: 
+
+
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+    
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>fixed acidity</th>
+      <th>volatile acidity</th>
+      <th>citric acid</th>
+      <th>residual sugar</th>
+      <th>chlorides</th>
+      <th>free sulfur dioxide</th>
+      <th>total sulfur dioxide</th>
+      <th>density</th>
+      <th>pH</th>
+      <th>sulphates</th>
+      <th>alcohol</th>
+      <th>quality</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>0.562940</td>
+      <td>-0.888449</td>
+      <td>0.862598</td>
+      <td>-0.653769</td>
+      <td>-1.032654</td>
+      <td>0.490416</td>
+      <td>-0.153396</td>
+      <td>-0.764611</td>
+      <td>-0.447865</td>
+      <td>0.910611</td>
+      <td>0.339553</td>
+      <td>7</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>-0.524155</td>
+      <td>0.624411</td>
+      <td>-1.039136</td>
+      <td>-0.515844</td>
+      <td>0.264860</td>
+      <td>-0.755823</td>
+      <td>-0.714876</td>
+      <td>-0.326427</td>
+      <td>-0.064922</td>
+      <td>-0.462752</td>
+      <td>-0.785627</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>-0.581371</td>
+      <td>-0.440194</td>
+      <td>0.451412</td>
+      <td>2.311619</td>
+      <td>-0.279259</td>
+      <td>-0.372365</td>
+      <td>1.176425</td>
+      <td>0.560373</td>
+      <td>0.126550</td>
+      <td>1.030034</td>
+      <td>0.058258</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>2.279407</td>
+      <td>-0.776385</td>
+      <td>1.839165</td>
+      <td>-0.171031</td>
+      <td>0.076511</td>
+      <td>-0.947552</td>
+      <td>-0.862633</td>
+      <td>1.916656</td>
+      <td>-0.958456</td>
+      <td>-1.000155</td>
+      <td>-0.879392</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>1.192312</td>
+      <td>-0.832417</td>
+      <td>0.965395</td>
+      <td>-0.308956</td>
+      <td>0.348571</td>
+      <td>-0.947552</td>
+      <td>-1.099046</td>
+      <td>-0.044738</td>
+      <td>-1.213751</td>
+      <td>-0.044772</td>
+      <td>1.277203</td>
+      <td>7</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+Now, we melt the 11 specifications (previously X_train_scaled) into one large column called Stat Type
+
+
+```python
+swarm_data = pd.melt(train_data_scaled, id_vars=["quality"], var_name="Stat Type")
+swarm_data.head(10)
+```
+
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+    
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>quality</th>
+      <th>Stat Type</th>
+      <th>value</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>7</td>
+      <td>fixed acidity</td>
+      <td>0.562940</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>5</td>
+      <td>fixed acidity</td>
+      <td>-0.524155</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>5</td>
+      <td>fixed acidity</td>
+      <td>-0.581371</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>5</td>
+      <td>fixed acidity</td>
+      <td>2.279407</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>7</td>
+      <td>fixed acidity</td>
+      <td>1.192312</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>5</td>
+      <td>fixed acidity</td>
+      <td>-0.581371</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>6</td>
+      <td>fixed acidity</td>
+      <td>-1.153527</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>5</td>
+      <td>fixed acidity</td>
+      <td>0.391294</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>6</td>
+      <td>fixed acidity</td>
+      <td>-1.153527</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>5</td>
+      <td>fixed acidity</td>
+      <td>-0.581371</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+Note that the table is 11 times as long since the 11 features are all melted into 1 column.
+
+The swarmplot:
+
+
+```python
+plt.figure(figsize=(16,8));
+sns.swarmplot(x='Stat Type', y='value', hue='quality', data=swarm_data, dodge=True);
+plt.ylim(-3, 6);
+plt.legend(bbox_to_anchor=(1, 1), loc=2);
+```
+
+
+![png](./Output/output_23_0.png)
+
+
+From the graph, there are no distinct separation (referring to vertical separation) between the overall quality, ie. it's not as simple as for example, higher acidity means higher quality. 
+
+This could pose a threat to our model. We'll see how it goes.
+
+# Heatmap
+
+
+```python
+corrmat = train_data.corr()
+plt.figure(figsize=(12,12));
+sns.heatmap(corrmat, annot = True, square = True, fmt = '.2f');
+```
+
+
+![png](./Output/output_25_0.png)
+
+
+Nothing too out of the ordinary here either. These features are fine, no risk of having multicollinearity.
+
+# Random Forest
+
+## Cross Validation with Gridsearch
+
+
+```python
+from sklearn.ensemble import RandomForestRegressor
+
+pipeline_rfr = make_pipeline(
+    preprocessing.StandardScaler(),
+    RandomForestRegressor(random_state = 111)
+)
+
+hyperparameters_rfr = {
+    'randomforestregressor__max_features' : ['auto', 'sqrt', 'log2'],
+    'randomforestregressor__n_estimators': [750, 1000, 1500],
+    'randomforestregressor__min_samples_split': [2,4]
+}
+
+CV_rfr = GridSearchCV(pipeline_rfr, hyperparameters_rfr, cv=3)
+
+CV_rfr.fit(X_train, y_train)
+print("Best Parameters: ", CV_rfr.best_params_)
+```
+
+
+
+
+    GridSearchCV(cv=3, error_score='raise',
+           estimator=Pipeline(memory=None,
+         steps=[('standardscaler', StandardScaler(copy=True, with_mean=True, with_std=True)), ('randomforestregressor', RandomForestRegressor(bootstrap=True, criterion='mse', max_depth=None,
+               max_features='auto', max_leaf_nodes=None,
+               min_impurity_decr...timators=10, n_jobs=1,
+               oob_score=False, random_state=111, verbose=0, warm_start=False))]),
+           fit_params=None, iid=True, n_jobs=1,
+           param_grid={'randomforestregressor__max_features': ['auto', 'sqrt', 'log2'], 'randomforestregressor__n_estimators': [750, 1000, 1500], 'randomforestregressor__min_samples_split': [2, 4]},
+           pre_dispatch='2*n_jobs', refit=True, return_train_score='warn',
+           scoring=None, verbose=0)
+
+
+
+    Best Parameters:  {'randomforestregressor__max_features': 'sqrt', 'randomforestregressor__min_samples_split': 2, 'randomforestregressor__n_estimators': 1500}
+
+
+## Grid Search Results
+### Run 1:
+```python
+hyperparameters_rfr = {
+    'randomforestregressor__max_features' : ['auto', 'sqrt', 'log2'],
+    'randomforestregressor__n_estimators': [200, 500, 1000],
+    'randomforestregressor__min_samples_split': [2,4,8]
+}
+
+Best Parameters:  {
+    'randomforestregressor__max_features': 'sqrt', 
+    'randomforestregressor__min_samples_split': 2, 
+    'randomforestregressor__n_estimators': 1000
+}
+
+R2 score:  0.53691813790181
+    
+Forced Classification Scores:
+
+    Precision	Recall	F Score	Support
+3	0.000000	0.000000	0.000000	2
+4	0.000000	0.000000	0.000000	11
+5	0.736486	0.801471	0.767606	136
+6	0.692308	0.773438	0.730627	128
+7	0.758621	0.550000	0.637681	40
+8	0.000000	0.000000	0.000000	3
+```
+
+### Run 2:
+```python
+hyperparameters_rfr = {
+    'randomforestregressor__max_features' : ['auto', 'sqrt', 'log2'],
+    'randomforestregressor__n_estimators': [750, 1000, 1500],
+    'randomforestregressor__min_samples_split': [2,4]
+}
+
+Best Parameters:  {
+    'randomforestregressor__max_features': 'sqrt', 
+    'randomforestregressor__min_samples_split': 2, 
+    'randomforestregressor__n_estimators': 1500
+}
+
+R2 score:  0.5376639543690431
+
+    Precision	Recall	F Score	Support
+3	0.000000	0.000000	0.000000	2
+4	0.000000	0.000000	0.000000	11
+5	0.726667	0.801471	0.762238	136
+6	0.678322	0.757812	0.715867	128
+7	0.740741	0.500000	0.597015	40
+8	0.000000	0.000000	0.000000	3
+```
+
+## Final Model
+
+
+```python
+CV_rfr = make_pipeline(
+    preprocessing.StandardScaler(),
+    RandomForestRegressor(
+        max_features = 'sqrt',
+        n_estimators = 1500,
+        min_samples_split = 2
+    )
+)
+
+CV_rfr.fit(X_train, y_train)
+```
+
+
+
+
+    Pipeline(memory=None,
+         steps=[('standardscaler', StandardScaler(copy=True, with_mean=True, with_std=True)), ('randomforestregressor', RandomForestRegressor(bootstrap=True, criterion='mse', max_depth=None,
+               max_features='sqrt', max_leaf_nodes=None,
+               min_impurity_decrease=0.0, min_impurity_split=None,
+               min_samples_leaf=1, min_samples_split=2,
+               min_weight_fraction_leaf=0.0, n_estimators=1500, n_jobs=1,
+               oob_score=False, random_state=None, verbose=0, warm_start=False))])
+
+
+
+## Performance
+
+
+```python
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import precision_recall_fscore_support as score
+from sklearn.metrics import r2_score
+y_pred_rfr = 0
+y_pred_rfr = CV_rfr.predict(X_test)
+print("Actual Qualities: ")
+y_test.values[0:10]
+print("Predicted Qualities: ")
+y_pred_rfr[0:10]
+print("Forced Classification: ")
+y_pred_rfr_int = np.rint(y_pred_rfr)
+y_pred_rfr_int[0:10]
+
+print("R2 score: ", r2_score(y_test, y_pred_rfr))
+print("Forced Classification Scores:")
+
+cm = confusion_matrix(y_test, y_pred_rfr_int)
+     
+df_cm = pd.DataFrame(cm, range(3,9), range(3,9))
+plt.figure(figsize = (10,7))
+sns.heatmap(df_cm, annot=True, fmt='d', square=True)
+plt.xlabel('Predicted')
+plt.ylabel('Actual')
+
+
+precision, recall, fscore, support = score(y_test, y_pred_rfr_int);
+
+df_precision = pd.DataFrame(precision, index=range(3, 9), columns=["Precision"])
+df_recall = pd.DataFrame(recall, index=range(3, 9), columns=["Recall"])
+df_fscore = pd.DataFrame(fscore, index=range(3, 9), columns=["F Score"])
+df_support = pd.DataFrame(support, index=range(3, 9), columns=["Support"])
+
+score = pd.concat([df_precision, df_recall, df_fscore, df_support], axis = 1)
+score
+```
+
+    Actual Qualities: 
+
+
+
+
+
+    array([6, 5, 6, 5, 6, 6, 6, 6, 7, 7], dtype=int64)
+
+
+
+    Predicted Qualities: 
+
+
+
+
+
+    array([5.26, 5.08, 6.43, 4.96, 5.68, 5.73, 5.98, 5.56, 6.82, 6.81])
+
+
+
+    Forced Classification: 
+
+
+
+
+
+    array([5.00, 5.00, 6.00, 5.00, 6.00, 6.00, 6.00, 6.00, 7.00, 7.00])
+
+
+
+    R2 score:  0.5417572298565289
+    Forced Classification Scores:
+
+
+
+
+
+    <matplotlib.figure.Figure at 0x962803d908>
+
+
+
+
+
+
+    <matplotlib.axes._subplots.AxesSubplot at 0x9627620cf8>
+
+
+
+
+
+
+    Text(0.5,42,'Predicted')
+
+
+
+
+
+
+    Text(134.88,0.5,'Actual')
+
+
+
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+    
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Precision</th>
+      <th>Recall</th>
+      <th>F Score</th>
+      <th>Support</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>3</th>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>2</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>11</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>0.731544</td>
+      <td>0.801471</td>
+      <td>0.764912</td>
+      <td>136</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>0.685315</td>
+      <td>0.765625</td>
+      <td>0.723247</td>
+      <td>128</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>0.750000</td>
+      <td>0.525000</td>
+      <td>0.617647</td>
+      <td>40</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>3</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+
+![png](./Output/output_31_12.png)
+
+
+Here, we try a few more algorithms:
+
+# SVM
+## Cross Validation with Gridsearch
+
+
+```python
+from sklearn.svm import SVR
+
+pipeline_svr = make_pipeline(
+    preprocessing.StandardScaler(), 
+    SVR()
+)
+
+hyperparameters_svr = { 
+    "svr__kernel" : ['linear', 'poly', 'rbf', 'sigmoid'],
+    "svr__gamma" : [0.03, 0.1, 0.3],
+    "svr__C" : [0.1, 0.3, 1]
+}
+ 
+CV_svr = GridSearchCV(pipeline_svr, hyperparameters_svr, cv= 3)
+
+CV_svr.fit(X_train, y_train)
+print("Best Parameters = ", CV_svr.best_params_)
+```
+
+
+
+
+    GridSearchCV(cv=3, error_score='raise',
+           estimator=Pipeline(memory=None,
+         steps=[('standardscaler', StandardScaler(copy=True, with_mean=True, with_std=True)), ('svr', SVR(C=1.0, cache_size=200, coef0=0.0, degree=3, epsilon=0.1, gamma='auto',
+      kernel='rbf', max_iter=-1, shrinking=True, tol=0.001, verbose=False))]),
+           fit_params=None, iid=True, n_jobs=1,
+           param_grid={'svr__kernel': ['linear', 'poly', 'rbf', 'sigmoid'], 'svr__gamma': [0.03, 0.1, 0.3], 'svr__C': [0.1, 0.3, 1]},
+           pre_dispatch='2*n_jobs', refit=True, return_train_score='warn',
+           scoring=None, verbose=0)
+
+
+
+    Best Parameters =  {'svr__C': 1, 'svr__gamma': 0.1, 'svr__kernel': 'rbf'}
+
+
+## Grid Search Results
+
+### Run 1
+```python
+hyperparameters_svr = { 
+    "svr__kernel" : ['linear', 'poly', 'rbf', 'sigmoid'],
+    "svr__gamma" : [0.1, 0.001, 0.00001],
+    "svr__C" : [3, 10, 30]
+}
+
+Best Parameters =  {
+    'svr__C': 3, 
+    'svr__gamma': 0.1, 
+    'svr__kernel': 'rbf'
+}
+
+R2 score:  0.3845920812148286
+    
+	Precision	Recall	F Score	Support
+3	0.000000	0.000000	0.000000	2
+4	0.000000	0.000000	0.000000	11
+5	0.696552	0.742647	0.718861	136
+6	0.602837	0.664062	0.631970	128
+7	0.593750	0.475000	0.527778	40
+8	0.000000	0.000000	0.000000	3
+```
+
+### Run 2
+```python
+hyperparameters_svr = { 
+    "svr__kernel" : ['linear', 'poly', 'rbf', 'sigmoid'],
+    "svr__gamma" : [0.03, 0.1, 0.3],
+    "svr__C" : [1, 3, 5]
+}
+
+Best Parameters =  {
+    'svr__C': 1, 
+    'svr__gamma': 0.1, 
+    'svr__kernel': 'rbf'
+}
+
+R2 score:  0.4060408127341305
+    
+Precision	Recall	F Score	Support
+3	0.000000	0.000000	0.000000	2
+4	0.000000	0.000000	0.000000	11
+5	0.681529	0.786765	0.730375	136
+6	0.594203	0.640625	0.616541	128
+7	0.600000	0.375000	0.461538	40
+8	0.000000	0.000000	0.000000	3
+```
+### Run 3 (no change)
+```python
+hyperparameters_svr = { 
+    "svr__kernel" : ['linear', 'poly', 'rbf', 'sigmoid'],
+    "svr__gamma" : [0.03, 0.1, 0.3],
+    "svr__C" : [0.1, 0.3, 1]
+}
+
+Best Parameters =  {
+    'svr__C': 1, 
+    'svr__gamma': 0.1, 
+    'svr__kernel': 'rbf'
+}
+
+R2 score:  0.4060408127341305
+    
+Precision	Recall	F Score	Support
+3	0.000000	0.000000	0.000000	2
+4	0.000000	0.000000	0.000000	11
+5	0.681529	0.786765	0.730375	136
+6	0.594203	0.640625	0.616541	128
+7	0.600000	0.375000	0.461538	40
+8	0.000000	0.000000	0.000000	3
+```
+
+svr is maxed out as well.
+
+## Final model:
+
+
+```python
+CV_svr = make_pipeline(
+    preprocessing.StandardScaler(), 
+    SVR(
+        C = 1, 
+        gamma = 0.1, 
+        kernel = 'rbf'
+    )
+)
+
+CV_svr.fit(X_train, y_train)
+```
+
+
+
+
+    Pipeline(memory=None,
+         steps=[('standardscaler', StandardScaler(copy=True, with_mean=True, with_std=True)), ('svr', SVR(C=1, cache_size=200, coef0=0.0, degree=3, epsilon=0.1, gamma=0.1,
+      kernel='rbf', max_iter=-1, shrinking=True, tol=0.001, verbose=False))])
+
+
+
+## Performance: 
+
+
+```python
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import precision_recall_fscore_support as score
+from sklearn.metrics import r2_score
+
+y_pred_svr = 0
+y_pred_svr = CV_svr.predict(X_test)
+print("Actual Qualities: ")
+y_test.values[0:10]
+print("Predicted Qualities: ")
+y_pred_svr[0:10]
+print("Forced Classification: ")
+y_pred_svr_int = np.rint(y_pred_svr)
+y_pred_svr_int[0:10]
+
+print("R2 score: ", r2_score(y_test, y_pred_svr))
+print("Forced Classification Scores:")
+
+cm = confusion_matrix(y_test, y_pred_svr_int)
+     
+df_cm = pd.DataFrame(cm, range(3,9), range(3,9))
+plt.figure(figsize = (10,7))
+sns.heatmap(df_cm, annot=True, fmt='d', square=True)
+plt.xlabel('Predicted')
+plt.ylabel('Actual')
+
+
+precision, recall, fscore, support = score(y_test, y_pred_svr_int);
+
+df_precision = pd.DataFrame(precision, index=range(3, 9), columns=["Precision"])
+df_recall = pd.DataFrame(recall, index=range(3, 9), columns=["Recall"])
+df_fscore = pd.DataFrame(fscore, index=range(3, 9), columns=["F Score"])
+df_support = pd.DataFrame(support, index=range(3, 9), columns=["Support"])
+
+score = pd.concat([df_precision, df_recall, df_fscore, df_support], axis = 1)
+score
+```
+
+    Actual Qualities: 
+
+
+
+
+
+    array([6, 5, 6, 5, 6, 6, 6, 6, 7, 7], dtype=int64)
+
+
+
+    Predicted Qualities: 
+
+
+
+
+
+    array([5.20, 5.10, 6.78, 5.07, 5.84, 5.85, 6.03, 5.59, 6.74, 6.75])
+
+
+
+    Forced Classification: 
+
+
+
+
+
+    array([5.00, 5.00, 7.00, 5.00, 6.00, 6.00, 6.00, 6.00, 7.00, 7.00])
+
+
+
+    R2 score:  0.4060408127341305
+    Forced Classification Scores:
+
+
+
+
+
+    <matplotlib.figure.Figure at 0x9626991320>
+
+
+
+
+
+
+    <matplotlib.axes._subplots.AxesSubplot at 0x96270121d0>
+
+
+
+
+
+
+    Text(0.5,42,'Predicted')
+
+
+
+
+
+
+    Text(134.88,0.5,'Actual')
+
+
+
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+    
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Precision</th>
+      <th>Recall</th>
+      <th>F Score</th>
+      <th>Support</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>3</th>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>2</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>11</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>0.681529</td>
+      <td>0.786765</td>
+      <td>0.730375</td>
+      <td>136</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>0.594203</td>
+      <td>0.640625</td>
+      <td>0.616541</td>
+      <td>128</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>0.600000</td>
+      <td>0.375000</td>
+      <td>0.461538</td>
+      <td>40</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>3</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+
+![png](./Output/output_37_12.png)
+
+
+Now let's another algorithm: Neural Network
+
+Hopefully it would give us better results
+
+# Neural Network
+## Cross Validation with Gridsearch
+
+
+```python
+from sklearn.neural_network import MLPRegressor
+
+pipeline_nn = make_pipeline(
+    preprocessing.StandardScaler(), 
+    MLPRegressor(max_iter=1000)
+)
+
+hyperparameters_nn = {
+    'mlpregressor__learning_rate': ["constant", "invscaling", "adaptive"],
+    'mlpregressor__hidden_layer_sizes': [(15), (20), (25)],
+    'mlpregressor__alpha': [0.03, 0.1, 0.3],
+    'mlpregressor__activation': ['logistic', 'tanh', 'relu']
+}
+
+CV_nn = GridSearchCV(pipeline_nn, hyperparameters_nn, cv=3)
+
+CV_nn.fit(X_train, y_train)
+print("Best Parameters = ", CV_nn.best_params_)
+```
+
+
+
+
+    GridSearchCV(cv=3, error_score='raise',
+           estimator=Pipeline(memory=None,
+         steps=[('standardscaler', StandardScaler(copy=True, with_mean=True, with_std=True)), ('mlpregressor', MLPRegressor(activation='relu', alpha=0.0001, batch_size='auto', beta_1=0.9,
+           beta_2=0.999, early_stopping=False, epsilon=1e-08,
+           hidden_layer_sizes=(100,), learning_rate='constant',
+       ...=True, solver='adam', tol=0.0001, validation_fraction=0.1,
+           verbose=False, warm_start=False))]),
+           fit_params=None, iid=True, n_jobs=1,
+           param_grid={'mlpregressor__learning_rate': ['constant', 'invscaling', 'adaptive'], 'mlpregressor__hidden_layer_sizes': [15, 20, 25], 'mlpregressor__alpha': [0.03, 0.1, 0.3], 'mlpregressor__activation': ['logistic', 'tanh', 'relu']},
+           pre_dispatch='2*n_jobs', refit=True, return_train_score='warn',
+           scoring=None, verbose=0)
+
+
+
+    Best Parameters =  {'mlpregressor__activation': 'tanh', 'mlpregressor__alpha': 0.3, 'mlpregressor__hidden_layer_sizes': 20, 'mlpregressor__learning_rate': 'constant'}
+
+
+## GridSearch Results
+### Run 1:
+```python
+hyperparameters_nn = {
+    'mlpregressor__learning_rate': ["constant", "invscaling", "adaptive"],
+    'mlpregressor__hidden_layer_sizes': [(5), (10), (20)],
+    'mlpregressor__alpha': [0.00001, 0.001, 0.1],
+    'mlpregressor__activation': ['logistic', 'tanh', 'relu']
+}
+
+Best Parameters =  {
+    'mlpregressor__activation': 'tanh', 
+    'mlpregressor__alpha': 0.1, 
+    'mlpregressor__hidden_layer_sizes': 20, 
+    'mlpregressor__learning_rate': 'invscaling'
+}
+
+R2 score:  0.4055030582521735
+    
+	Precision	Recall	F Score	Support
+3	0.000000	0.000000	0.000000	2
+4	0.000000	0.000000	0.000000	11
+5	0.680272	0.735294	0.706714	136
+6	0.598639	0.687500	0.640000	128
+7	0.653846	0.425000	0.515152	40
+8	0.000000	0.000000	0.000000	3
+
+```
+
+### Run 2:
+```python
+hyperparameters_nn = {
+    'mlpregressor__learning_rate': ["constant", "invscaling", "adaptive"],
+    'mlpregressor__hidden_layer_sizes': [(15), (20), (25)],
+    'mlpregressor__alpha': [0.03, 0.1, 0.3],
+    'mlpregressor__activation': ['logistic', 'tanh', 'relu']
+}
+
+Best Parameters =  {
+    'mlpregressor__activation': 'tanh', 
+    'mlpregressor__alpha': 0.3, 
+    'mlpregressor__hidden_layer_sizes': 20, 
+    'mlpregressor__learning_rate': 'adaptive'
+}
+
+R2 score:  0.4122590801837638
+    
+	Precision	Recall	F Score	Support
+3	0.000000	0.000000	0.000000	2
+4	0.666667	0.181818	0.285714	11
+5	0.697368	0.779412	0.736111	136
+6	0.622378	0.695312	0.656827	128
+7	0.636364	0.350000	0.451613	40
+8	0.000000	0.000000	0.000000	3
+
+```
+
+## Final Model
+
+
+```python
+CV_nn = make_pipeline(
+    preprocessing.StandardScaler(),
+    MLPRegressor(
+        activation = 'tanh',
+        alpha = 0.3,
+        hidden_layer_sizes = 20,
+        learning_rate = 'adaptive'
+    )
+)
+
+CV_nn.fit(X_train, y_train)
+```
+
+
+
+
+    Pipeline(memory=None,
+         steps=[('standardscaler', StandardScaler(copy=True, with_mean=True, with_std=True)), ('mlpregressor', MLPRegressor(activation='tanh', alpha=0.3, batch_size='auto', beta_1=0.9,
+           beta_2=0.999, early_stopping=False, epsilon=1e-08,
+           hidden_layer_sizes=20, learning_rate='adaptive',
+           lea...=True, solver='adam', tol=0.0001, validation_fraction=0.1,
+           verbose=False, warm_start=False))])
+
+
+
+## Performance
+
+
+```python
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import precision_recall_fscore_support as score
+from sklearn.metrics import r2_score
+
+y_pred_nn = 0
+y_pred_nn = CV_nn.predict(X_test)
+print("Actual Qualities: ")
+y_test.values[0:10]
+print("Predicted Qualities: ")
+y_pred_nn[0:10]
+print("Forced Classification: ")
+y_pred_nn_int = np.rint(y_pred_nn)
+y_pred_nn_int[0:10]
+
+print("R2 score: ", r2_score(y_test, y_pred_nn))
+
+print("Confusion Matrix: ")
+cm = confusion_matrix(y_test, y_pred_nn_int)
+     
+df_cm = pd.DataFrame(cm, range(3,9), range(3,9))
+
+plt.figure(figsize = (10,7));
+sns.heatmap(df_cm, annot=True, fmt='d', square=True);
+plt.xlabel('Predicted');
+plt.ylabel('Actual');
+
+
+print("Classification Scores: ")
+precision, recall, fscore, support = score(y_test, y_pred_nn_int);
+
+df_precision = pd.DataFrame(precision, index=range(3, 9), columns=["Precision"])
+df_recall = pd.DataFrame(recall, index=range(3, 9), columns=["Recall"])
+df_fscore = pd.DataFrame(fscore, index=range(3, 9), columns=["F Score"])
+df_support = pd.DataFrame(support, index=range(3, 9), columns=["Support"])
+
+score = pd.concat([df_precision, df_recall, df_fscore, df_support], axis = 1)
+score
+```
+
+    Actual Qualities: 
+
+
+
+
+
+    array([6, 5, 6, 5, 6, 6, 6, 6, 7, 7], dtype=int64)
+
+
+
+    Predicted Qualities: 
+
+
+
+
+
+    array([5.37, 5.45, 6.77, 5.11, 5.40, 5.49, 6.05, 5.76, 6.32, 6.62])
+
+
+
+    Forced Classification: 
+
+
+
+
+
+    array([5.00, 5.00, 7.00, 5.00, 5.00, 5.00, 6.00, 6.00, 6.00, 7.00])
+
+
+
+    R2 score:  0.37704509973426115
+    Confusion Matrix: 
+
+
+
+
+
+    <matplotlib.figure.Figure at 0x9626c17550>
+
+
+
+
+
+
+    <matplotlib.axes._subplots.AxesSubplot at 0x9626c4c630>
+
+
+
+
+
+
+    Text(0.5,42,'Predicted')
+
+
+
+
+
+
+    Text(134.88,0.5,'Actual')
+
+
+
+    Classification Scores: 
+
+
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+    
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Precision</th>
+      <th>Recall</th>
+      <th>F Score</th>
+      <th>Support</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>3</th>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>2</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>0.500000</td>
+      <td>0.090909</td>
+      <td>0.153846</td>
+      <td>11</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>0.687075</td>
+      <td>0.742647</td>
+      <td>0.713781</td>
+      <td>136</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>0.588235</td>
+      <td>0.703125</td>
+      <td>0.640569</td>
+      <td>128</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>0.666667</td>
+      <td>0.300000</td>
+      <td>0.413793</td>
+      <td>40</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>3</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+
+![png](./Output/output_43_13.png)
+
+
+The last model we are going to try:
+
+# KNeighbors
+
+
+```python
+from sklearn.neighbors import KNeighborsRegressor
+
+pipeline_kn = make_pipeline(
+    preprocessing.StandardScaler(),
+    KNeighborsRegressor()
+)
+
+hyperparameters_kn = {
+    'kneighborsregressor__n_neighbors': [25, 30, 35, 50],
+    'kneighborsregressor__weights': ['distance', 'uniform'],
+    'kneighborsregressor__algorithm': ['auto', 'ball_tree', 'kd_tree', 'brute']
+}
+
+CV_kn = GridSearchCV(pipeline_kn, hyperparameters_kn,cv=3)
+
+CV_kn.fit(X_train, y_train)
+
+print("Best Parameters = ", CV_kn.best_params_)
+```
+
+
+
+
+    GridSearchCV(cv=3, error_score='raise',
+           estimator=Pipeline(memory=None,
+         steps=[('standardscaler', StandardScaler(copy=True, with_mean=True, with_std=True)), ('kneighborsregressor', KNeighborsRegressor(algorithm='auto', leaf_size=30, metric='minkowski',
+              metric_params=None, n_jobs=1, n_neighbors=5, p=2,
+              weights='uniform'))]),
+           fit_params=None, iid=True, n_jobs=1,
+           param_grid={'kneighborsregressor__n_neighbors': [25, 30, 35, 50], 'kneighborsregressor__weights': ['distance', 'uniform'], 'kneighborsregressor__algorithm': ['auto', 'ball_tree', 'kd_tree', 'brute']},
+           pre_dispatch='2*n_jobs', refit=True, return_train_score='warn',
+           scoring=None, verbose=0)
+
+
+
+    Best Parameters =  {'kneighborsregressor__algorithm': 'auto', 'kneighborsregressor__n_neighbors': 35, 'kneighborsregressor__weights': 'distance'}
+
+
+## GridSearch Results
+### Run 1:
+```python
+hyperparameters_kn = {
+    'kneighborsregressor__n_neighbors': [10,20,30],
+    'kneighborsregressor__weights': ['distance', 'uniform'],
+    'kneighborsregressor__algorithm': ['auto', 'ball_tree', 'kd_tree', 'brute']
+}
+
+Best Parameters =  {
+    'kneighborsregressor__algorithm': 'auto', 
+    'kneighborsregressor__n_neighbors': 30, 
+    'kneighborsregressor__weights': 'distance'
+}
+
+R2 score:  0.48709930370720866
+    
+	Precision	Recall	F Score	Support
+3	0.000000	0.000000	0.000000	2
+4	0.000000	0.000000	0.000000	11
+5	0.748252	0.786765	0.767025	136
+6	0.646259	0.742188	0.690909	128
+7	0.689655	0.500000	0.579710	40
+8	1.000000	0.333333	0.500000	3
+```
+
+### Run 2:
+```python
+hyperparameters_kn = {
+    'kneighborsregressor__n_neighbors': [25, 30, 35, 50],
+    'kneighborsregressor__weights': ['distance', 'uniform'],
+    'kneighborsregressor__algorithm': ['auto', 'ball_tree', 'kd_tree', 'brute']
+}
+
+Best Parameters =  {
+    'kneighborsregressor__algorithm': 'auto', 
+    'kneighborsregressor__n_neighbors': 35, 
+    'kneighborsregressor__weights': 'distance'
+}
+
+R2 score:  0.4885513156450002
+
+Precision	Recall	F Score	Support
+3	0.000000	0.000000	0.000000	2
+4	0.000000	0.000000	0.000000	11
+5	0.734694	0.794118	0.763251	136
+6	0.647887	0.718750	0.681481	128
+7	0.700000	0.525000	0.600000	40
+8	1.000000	0.333333	0.500000	3
+```
+
+## Final Model
+
+
+```python
+CV_kn = make_pipeline(
+    preprocessing.StandardScaler(),
+    KNeighborsRegressor(
+        algorithm = 'auto',
+        n_neighbors = 35,
+        weights = 'distance'
+    )
+)
+
+CV_kn.fit(X_train, y_train)
+```
+
+
+
+
+    Pipeline(memory=None,
+         steps=[('standardscaler', StandardScaler(copy=True, with_mean=True, with_std=True)), ('kneighborsregressor', KNeighborsRegressor(algorithm='auto', leaf_size=30, metric='minkowski',
+              metric_params=None, n_jobs=1, n_neighbors=35, p=2,
+              weights='distance'))])
+
+
+
+## Performance
+
+
+```python
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import precision_recall_fscore_support as score
+from sklearn.metrics import r2_score
+
+y_pred_kn = 0
+y_pred_kn = CV_kn.predict(X_test)
+print("Actual Qualities: ")
+y_test.values[0:10]
+print("Predicted Qualities: ")
+y_pred_kn[0:10]
+print("Forced Classification: ")
+y_pred_kn_int = np.rint(y_pred_kn)
+y_pred_kn_int[0:10]
+
+print("R2 score: ", r2_score(y_test, y_pred_kn))
+print("Forced Classification Scores:")
+
+cm = confusion_matrix(y_test, y_pred_kn_int)
+     
+df_cm = pd.DataFrame(cm, range(3,9), range(3,9))
+plt.figure(figsize = (10,7))
+
+
+sns.heatmap(df_cm, annot=True, fmt='d', square=True)
+plt.xlabel('Predicted')
+plt.ylabel('Actual')
+
+
+precision, recall, fscore, support = score(y_test, y_pred_kn_int)
+
+df_precision = pd.DataFrame(precision, index=range(3, 9), columns=["Precision"])
+df_recall = pd.DataFrame(recall, index=range(3, 9), columns=["Recall"])
+df_fscore = pd.DataFrame(fscore, index=range(3, 9), columns=["F Score"])
+df_support = pd.DataFrame(support, index=range(3, 9), columns=["Support"])
+
+score = pd.concat([df_precision, df_recall, df_fscore, df_support], axis = 1)
+score
+```
+
+    Actual Qualities: 
+
+
+
+
+
+    array([6, 5, 6, 5, 6, 6, 6, 6, 7, 7], dtype=int64)
+
+
+
+    Predicted Qualities: 
+
+
+
+
+
+    array([5.41, 5.00, 6.35, 5.05, 5.50, 6.00, 5.83, 5.60, 7.00, 6.69])
+
+
+
+    Forced Classification: 
+
+
+
+
+
+    array([5.00, 5.00, 6.00, 5.00, 5.00, 6.00, 6.00, 6.00, 7.00, 7.00])
+
+
+
+    R2 score:  0.4885513156450002
+    Forced Classification Scores:
+
+
+
+
+
+    <matplotlib.figure.Figure at 0x9626c4cd68>
+
+
+
+
+
+
+    <matplotlib.axes._subplots.AxesSubplot at 0x9626fcbcc0>
+
+
+
+
+
+
+    Text(0.5,42,'Predicted')
+
+
+
+
+
+
+    Text(134.88,0.5,'Actual')
+
+
+
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+    
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Precision</th>
+      <th>Recall</th>
+      <th>F Score</th>
+      <th>Support</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>3</th>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>2</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>11</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>0.734694</td>
+      <td>0.794118</td>
+      <td>0.763251</td>
+      <td>136</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>0.647887</td>
+      <td>0.718750</td>
+      <td>0.681481</td>
+      <td>128</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>0.700000</td>
+      <td>0.525000</td>
+      <td>0.600000</td>
+      <td>40</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>1.000000</td>
+      <td>0.333333</td>
+      <td>0.500000</td>
+      <td>3</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+
+![png](./Output/output_49_12.png)
+
+
+Let us try a classifier, just for fun:
+
+# Random Forest Classifier
+## Cross Validation with Gridsearch
+
+
+```python
+from sklearn.ensemble import RandomForestClassifier
+
+pipeline_rfc = make_pipeline(
+    preprocessing.StandardScaler(), 
+    RandomForestClassifier()
+)
+
+hyperparameters_rfc = { 
+    'randomforestclassifier__max_features' : ['auto', 'sqrt', 'log2'],
+    'randomforestclassifier__max_depth': [3000, 3500, 4000],
+    'randomforestclassifier__n_estimators': [200, 300, 500]
+}
+
+CV_rfc = GridSearchCV(pipeline_rfc, hyperparameters_rfc, cv=3)
+
+CV_rfc.fit(X_train, y_train)
+print("Best Parameters = ", CV_rfc.best_params_)
+```
+
+
+
+
+    GridSearchCV(cv=3, error_score='raise',
+           estimator=Pipeline(memory=None,
+         steps=[('standardscaler', StandardScaler(copy=True, with_mean=True, with_std=True)), ('randomforestclassifier', RandomForestClassifier(bootstrap=True, class_weight=None, criterion='gini',
+                max_depth=None, max_features='auto', max_leaf_nodes=None,
+                min_impurity_decrease=0.0, min...n_jobs=1,
+                oob_score=False, random_state=None, verbose=0,
+                warm_start=False))]),
+           fit_params=None, iid=True, n_jobs=1,
+           param_grid={'randomforestclassifier__max_features': ['auto', 'sqrt', 'log2'], 'randomforestclassifier__max_depth': [3000, 3500, 4000], 'randomforestclassifier__n_estimators': [200, 300, 500]},
+           pre_dispatch='2*n_jobs', refit=True, return_train_score='warn',
+           scoring=None, verbose=0)
+
+
+
+    Best Parameters =  {'randomforestclassifier__max_depth': 4000, 'randomforestclassifier__max_features': 'log2', 'randomforestclassifier__n_estimators': 500}
+
+
+## Grid Search Results:
+### Run 1: 
+```python
+hyperparameters_rfc = { 
+    'randomforestclassifier__max_features' : ['auto', 'sqrt', 'log2'],
+    'randomforestclassifier__max_depth': [3000, 5000, None],
+    'randomforestclassifier__n_estimators': [200, 500, 1000]
+}
+
+Best Parameters =  {
+    'randomforestclassifier__max_depth': 3000, 
+    'randomforestclassifier__max_features': 'sqrt', 
+    'randomforestclassifier__n_estimators': 500
+}
+
+	Precision	Recall	F Score	Support
+3	0.000000	0.000000	0.000000	2
+4	0.000000	0.000000	0.000000	11
+5	0.746667	0.823529	0.783217	136
+6	0.691729	0.718750	0.704981	128
+7	0.657143	0.575000	0.613333	40
+8	1.000000	0.333333	0.500000	3
+```
+
+### Run 2:
+```python
+hyperparameters_rfc = { 
+    'randomforestclassifier__max_features' : ['auto', 'sqrt', 'log2'],
+    'randomforestclassifier__max_depth': [3000, 3500, 4000],
+    'randomforestclassifier__n_estimators': [200, 300, 500]
+}
+
+Best Parameters =  {
+    'randomforestclassifier__max_depth': 4000, 
+    'randomforestclassifier__max_features': 'log2', 
+    'randomforestclassifier__n_estimators': 500
+}
+
+	Precision	Recall	F Score	Support
+3	0.000000	0.000000	0.000000	2
+4	0.000000	0.000000	0.000000	11
+5	0.741722	0.823529	0.780488	136
+6	0.691729	0.718750	0.704981	128
+7	0.647059	0.550000	0.594595	40
+8	1.000000	0.333333	0.500000	3
+```
+### Run 3:
+```python
+hyperparameters_rfc = { 
+    'randomforestclassifier__max_features' : ['auto', 'sqrt', 'log2'],
+    'randomforestclassifier__max_depth': [1500, 3000, None],
+    'randomforestclassifier__n_estimators': [100, 150, 200]
+}
+
+Best Parameters =  {
+    'randomforestclassifier__max_depth': 3000, 
+    'randomforestclassifier__max_features': 'sqrt', 
+    'randomforestclassifier__n_estimators': 200
+}
+
+Precision	Recall	F Score	Support
+3	0.000000	0.000000	0.000000	2
+4	0.000000	0.000000	0.000000	11
+5	0.740000	0.816176	0.776224	136
+6	0.696970	0.718750	0.707692	128
+7	0.666667	0.600000	0.631579	40
+8	1.000000	0.333333	0.500000	3
+```
+
+It looks like performance is maxed out already.
+
+## Final Model:
+
+
+```python
+CV_rfc = RandomForestClassifier(
+    max_depth = 3000, 
+    max_features = 'sqrt', 
+    n_estimators = 200
+)
+CV_rfc.fit(X_train, y_train)
+```
+
+
+
+
+    RandomForestClassifier(bootstrap=True, class_weight=None, criterion='gini',
+                max_depth=3000, max_features='sqrt', max_leaf_nodes=None,
+                min_impurity_decrease=0.0, min_impurity_split=None,
+                min_samples_leaf=1, min_samples_split=2,
+                min_weight_fraction_leaf=0.0, n_estimators=200, n_jobs=1,
+                oob_score=False, random_state=None, verbose=0,
+                warm_start=False)
+
+
+
+## Performance
+#### Confusion Matrix:
+
+
+```python
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import precision_recall_fscore_support as score
+
+y_pred_rfc = 0
+y_pred_rfc = CV_rfc.predict(X_test)
+print("Actual Qualities: ")
+y_test.values[0:10]
+print("Predicted Qualities: ")
+y_pred_rfc[0:10]
+
+print("Classification Scores:")
+
+cm = confusion_matrix(y_test, y_pred_rfc)
+     
+df_cm = pd.DataFrame(cm, range(3,9), range(3,9))
+plt.figure(figsize = (10,7))
+sns.heatmap(df_cm, annot=True, fmt='d', square=True)
+plt.xlabel('Predicted')
+plt.ylabel('Actual')
+
+
+precision, recall, fscore, support = score(y_test, y_pred_rfc);
+
+df_precision = pd.DataFrame(precision, index=range(3, 9), columns=["Precision"])
+df_recall = pd.DataFrame(recall, index=range(3, 9), columns=["Recall"])
+df_fscore = pd.DataFrame(fscore, index=range(3, 9), columns=["F Score"])
+df_support = pd.DataFrame(support, index=range(3, 9), columns=["Support"])
+
+score = pd.concat([df_precision, df_recall, df_fscore, df_support], axis = 1)
+score
+```
+
+    Actual Qualities: 
+
+
+
+
+
+    array([6, 5, 6, 5, 6, 6, 6, 6, 7, 7], dtype=int64)
+
+
+
+    Predicted Qualities: 
+
+
+
+
+
+    array([5, 5, 6, 5, 6, 6, 6, 6, 7, 7], dtype=int64)
+
+
+
+    Classification Scores:
+
+
+
+
+
+    <matplotlib.figure.Figure at 0x9627105d30>
+
+
+
+
+
+
+    <matplotlib.axes._subplots.AxesSubplot at 0x9627105550>
+
+
+
+
+
+
+    Text(0.5,42,'Predicted')
+
+
+
+
+
+
+    Text(134.88,0.5,'Actual')
+
+
+
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+    
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Precision</th>
+      <th>Recall</th>
+      <th>F Score</th>
+      <th>Support</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>3</th>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>2</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>11</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>0.733333</td>
+      <td>0.808824</td>
+      <td>0.769231</td>
+      <td>136</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>0.686567</td>
+      <td>0.718750</td>
+      <td>0.702290</td>
+      <td>128</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>0.676471</td>
+      <td>0.575000</td>
+      <td>0.621622</td>
+      <td>40</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>1.000000</td>
+      <td>0.333333</td>
+      <td>0.500000</td>
+      <td>3</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+
+![png](./Output/output_55_10.png)
+
+
+# A Comparison Between Random Forest Regressor and Classifier
+```python
+Classifier:
+     Precision   Recall      F Score     Support
+3    0.000000    0.000000    0.000000    2
+4    0.000000    0.000000    0.000000    11
+5    0.740000    0.816176    0.776224    136
+6    0.696970    0.718750    0.707692    128
+7    0.666667    0.600000    0.631579    40
+8    1.000000    0.333333    0.500000    3
+
+Regressor:
+
+    Precision	Recall	    F Score	    Support
+3	0.000000	0.000000	0.000000	2
+4	0.000000	0.000000	0.000000	11
+5	0.726667	0.801471	0.762238	136
+6	0.678322	0.757812	0.715867	128
+7	0.740741	0.500000	0.597015	40
+8	0.000000	0.000000	0.000000	3
+```
+
+Very surprisingly, the classifier performs better than the regressor on our dataset, which is weird considering that the classifier treats falsely predicting a quality of 4 as bad/good as falsely predicting a quality of 8 when the actual quality is 3.
+
+I believe that if we had more and higher quality data, the regressor will learn to perform better than the classifier as it takes in the fact that predicting a 4 for a 3 is better than predicting 8 for a 3.
+
+After comparing precision and recall scores of different models, we agree upon a best model
+
+# Best Model:
+
+
+```python
+rfr = make_pipeline(
+    preprocessing.StandardScaler(),
+    RandomForestRegressor(
+        max_features = 'sqrt',
+        n_estimators = 1500,
+        min_samples_split = 2
+    )
+)
+
+rfr.fit(X_train, y_train)
+```
+
+
+
+
+    Pipeline(memory=None,
+         steps=[('standardscaler', StandardScaler(copy=True, with_mean=True, with_std=True)), ('randomforestregressor', RandomForestRegressor(bootstrap=True, criterion='mse', max_depth=None,
+               max_features='sqrt', max_leaf_nodes=None,
+               min_impurity_decrease=0.0, min_impurity_split=None,
+               min_samples_leaf=1, min_samples_split=2,
+               min_weight_fraction_leaf=0.0, n_estimators=1500, n_jobs=1,
+               oob_score=False, random_state=None, verbose=0, warm_start=False))])
+
+
+
+Its performance:
+```python
+R2 score:  0.5376639543690431
+
+    Precision	Recall	 F Score	Support
+3	0.000000	0.000000	0.000000	2
+4	0.000000	0.000000	0.000000	11
+5	0.726667	0.801471	0.762238	136
+6	0.678322	0.757812	0.715867	128
+7	0.740741	0.500000	0.597015	40
+8	0.000000	0.000000	0.000000	3
+```
+
+# Saving the Trained Model
+
+
+```python
+joblib.dump(rfr, 'rf_regressor.pkl')
+# To load: rfr2 = joblib.load('rf_regressor.pkl')
+```
+
+
+
+
+    ['rf_regressor.pkl']
+
+
+
+# Conclusion
+
+Although the data collected was not very good, the features didn't correlate much at all with the quality. However, we were able to achieve satisfactory results with all models, most notibly the Random Forest Regressor with a high recall of 0.8 on the most frequent quality: 5. 
+
+Due to the nature of multiclass classification, a ROC curve was not used to evaluate the models. Rather, we identified the best model to use by inspecting the precision, recall and f scores. 
+
+That concludes this notebook, thanks for reading

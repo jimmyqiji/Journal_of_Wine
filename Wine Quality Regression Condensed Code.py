@@ -14,7 +14,9 @@ from sklearn.externals import joblib #for saving model
 
 
 # Load Dataset
-dataset_url = 'http://mlr.cs.umass.edu/ml/machine-learning-databases/wine-quality/winequality-red.csv'
+
+# dataset_url = 'http://mlr.cs.umass.edu/ml/machine-learning-databases/wine-quality/winequality-red.csv'
+dataset_url = './wine-quality-red.csv'
 data = pd.read_csv(dataset_url, sep = ";")
 
 
