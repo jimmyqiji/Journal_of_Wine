@@ -1,22 +1,33 @@
+# Wine Quality Regression
 
 A machine learning attempt at predicting wine quality ratings using dataset from the University of Massachusetts
+
+For a full walkthrough of the process, refer to this file and the IPython Notebook.
+
+For the final model and code, they can be found at Wine Quality Regression Condensed Code.py
+
+The dataset used is the wine-quality-red.csv file, retrieved from the University of Massachusetts: 
+
+http://mlr.cs.umass.edu/ml/machine-learning-databases/wine-quality/winequality-red.csv
+
+Now, my thought process:
 
 
 # Load Modules
 
 
 ```python
-import numpy as np
-import pandas as pd
-import seaborn as sns
-from matplotlib import pyplot as plt
-%matplotlib inline
+import numpy as np # for array operations
+import pandas as pd # for graphical display of arrays (basically arrays with row and column names)
+import seaborn as sns # for plotting graphs
+from matplotlib import pyplot as plt # for customizing graphs
+%matplotlib inline # IPython Notebook function, just ignore
 
-from sklearn.model_selection import train_test_split
-from sklearn import preprocessing
-from sklearn.pipeline import make_pipeline
-from sklearn.model_selection import GridSearchCV
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.model_selection import train_test_split # split data
+from sklearn import preprocessing # for scaling
+from sklearn.pipeline import make_pipeline # for grouping scaler and model into a wrapper called pipeline, goes into GridSearch
+from sklearn.model_selection import GridSearchCV # for cross-validation, determines best hyperparameters
+from sklearn.metrics import mean_squared_error, r2_score # performance measures
 from sklearn.externals import joblib #for saving model
 ```
 
