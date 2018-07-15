@@ -10,7 +10,11 @@ The dataset used is the wine-quality-red.csv file, retrieved from the University
 
 http://mlr.cs.umass.edu/ml/machine-learning-databases/wine-quality/winequality-red.csv
 
+This is the part 1/3 of this project: Red Wine Quality Regression, head over to White Wine Quality Regression for part 2/3
+
 Now, my thought process:
+
+
 
 
 # Load Modules
@@ -2966,4 +2970,4 @@ Although the data collected was not very good, the features didn't correlate muc
 
 Due to the nature of multiclass classification, a ROC curve was not used to evaluate the models. Rather, we identified the best model to use by inspecting the precision, recall and f scores. 
 
-That concludes this notebook, thanks for reading
+That concludes the part 1/3 of this notebook, thanks for reading and head over to part 2/3: White Wine Regression where we wrap up some of our hypothesis and assumptions

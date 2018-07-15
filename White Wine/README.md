@@ -4,6 +4,18 @@
 
 To demonstrate that with increased data size, the model performance is better
 
+For a full walkthrough of the process, refer to this file and the IPython Notebook.
+
+For the final model and code, they can be found at Wine Quality Regression Condensed Code.py
+
+The dataset used is the wine-quality-white.csv file, retrieved from the University of Massachusetts: 
+
+http://mlr.cs.umass.edu/ml/machine-learning-databases/wine-quality/winequality-white.csv
+
+This is the part 1/3 of this project: Red Wine Quality Regression, head over to White Wine Quality Regression for part 2/3
+
+Now, my thought process:
+
 # Load Modules
 
 
@@ -86,7 +98,7 @@ data.describe()
     .dataframe tbody tr th {
         vertical-align: top;
     }
-
+    
     .dataframe thead th {
         text-align: right;
     }
@@ -297,7 +309,7 @@ df_y_train.head()
     .dataframe tbody tr th {
         vertical-align: top;
     }
-
+    
     .dataframe thead th {
         text-align: right;
     }
@@ -354,7 +366,7 @@ swarm_data.head(10)
     .dataframe tbody tr th {
         vertical-align: top;
     }
-
+    
     .dataframe thead th {
         text-align: right;
     }
@@ -629,7 +641,7 @@ score
     .dataframe tbody tr th {
         vertical-align: top;
     }
-
+    
     .dataframe thead th {
         text-align: right;
     }
@@ -849,7 +861,7 @@ score
     .dataframe tbody tr th {
         vertical-align: top;
     }
-
+    
     .dataframe thead th {
         text-align: right;
     }
