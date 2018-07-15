@@ -16,7 +16,7 @@ Built and compared different regression models to predict red wine ratings, head
 
 A preview of what is predicted:
 
-![png](./Red Wine/Output/output_12_0.png)
+![png](./Red%20Wine/Output/output_12_0.png)
 
 
 
@@ -26,7 +26,7 @@ A preview of what is predicted:
 
 Uses the same procedure as part 1 to build a model. It concludes some hypotheses and assumptions made in part 1
 
-![png](./White Wine/Output/output_12_0.png)
+![png](./White%20Wine/Output/output_12_0.png)
 
 ## Part 3: Red vs. White Wine Classifier
 
