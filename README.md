@@ -36,10 +36,10 @@ This uses undersampling to create a classifier to predict the type of wine based
 
 A Preview: 
 
-![png](./RW Classifier/Output/output_21_0.png)
+![png](./RW%20Classifier/Output/output_21_0.png)
 
 
 
 Classification Results:
 
-![png](./RW Classifier/Output/output_29_1.png)
+![png](./RW%20Classifier/Output/output_29_1.png)
