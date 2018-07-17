@@ -32,4 +32,14 @@ Uses the same procedure as part 1 to build a model. It concludes some hypotheses
 
 ​	./RW Classify
 
-This uses undersampling to create a classifier to predict the type of wine based on its features
+This uses undersampling to create a classifier to predict the type of wine based on its features.
+
+A Preview: 
+
+![png](./RW Classifier/Output/output_21_0.png)
+
+
+
+Classification Results:
+
+![png](./RW Classifier/Output/output_29_1.png)
