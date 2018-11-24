@@ -10,7 +10,13 @@ http://mlr.cs.umass.edu/ml/machine-learning-databases/wine-quality/winequality-w
 
 ## Part 1: Red Wine Quality Regression
 
+<<<<<<< HEAD
 Refer to the [Red Wine](./Red%20Wine/Red%20Wine%20Quality%20Regression%20Notebook.ipynb) Journal
+
+
+=======
+Refer to the [Red Wine](Red Wine/Red Wine Quality Regression Notebook.ipynb) Journal
+>>>>>>> 75f948b5b24c815cb12dec4b9541d602bb8793d4
 
 Built and compared different regression models to predict red wine ratings, head to the above location to begin.
 
@@ -22,7 +28,11 @@ A preview of what is predicted:
 
 ## Part 2: White Wine Quality Regression
 
-Refer to the [White Wine](./White%20Wine/White%20Wine%20Quality%20Regression%20Notebook.ipynb) Journal
+<<<<<<< HEAD
+Refer to the [White Wine](./White Wine/White%20Wine%20Quality%20Regression%20Notebook.ipynb) Journal
+=======
+Refer to the [White Wine](./White Wine/White Wine Quality Regression Notebook.ipynb) Journal
+>>>>>>> 75f948b5b24c815cb12dec4b9541d602bb8793d4
 
 Uses the same procedure as part 1 to build a model. It concludes some hypotheses and assumptions made in part 1
 
